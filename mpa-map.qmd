@@ -1,0 +1,134 @@
+```{r, message= FALSE}
+# Load in the relevant libraries
+librarian::shelf(tidyverse, dplyr, terra, tmap, sf, here, stars)
+
+# library(calecopal)
+```
+
+```{r}
+# Load in the california boundary
+# ca_boundary <- sf::st_read(here::here("data", "ca_state"))
+# ca_counties <- sf::st_read(here::here("data", "ca_counties"))
+```
+
+```{r}
+# Load in the MPA boundary data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+
+#MPA_boundary <- sf::st_read(here::here("data", "California_Marine_Protected_Areas_[ds582]"))
+```
+
+```{r}
+tm_shape(mpa_boundaries) +
+  tm_polygons()
+```
+
+
+```{r}
+point_lobos <- mpa_boundaries |>
+  filter(NAME == "Point Lobos SMCA")
+```
+
+```{r}
+tm_shape(point_lobos) +
+  tm_polygons()
+```
+
+```{r}
+library(ggOceanMaps)
+
+#limits are given longitude min/max, latitude min/max
+dt <- data.frame(lon = c(-125, -125, -111, -111), 
+                 lat = c(28, 37, 37, 28))
+basemap(data = dt, bathymetry = TRUE, bathy.style = "rcb")
+```
+
+
+
+
+```{r}
+mpa_boundaries |>
+  filter(NAME == "Point Lobos SMCA")
+```
+
+
+
+```{r}
+unique(mpa_boundaries$NAME)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Create a preliminary map of the MPAs
+# tm_shape(ca_boundary)+
+#   tm_polygons(col = "#D8C397") +
+#   tm_shape(MPA_boundary) +
+#   tm_polygons(fill= "Type")
+
+```
+
+```{r}
+# Filter our counties to SoCal, Central, NorCal
+# socal_counties <- ca_counties %>%
+#   filter(NAME %in% c("San Diego", 
+#                      "Orange",
+#                      "Los Angeles",
+#                      "Ventura",
+#                      "Santa Barbara"))
+# 
+# central_counties <- ca_counties %>%
+#   filter(NAME %in% c("San Luis Obispo",
+#                      "Monterey",
+#                      "Santa Cruz"))
+# 
+# norcal_counties <- ca_counties %>%
+#   filter(NAME %in% c("San Mateo",
+#                      "San Francisco",
+#                      "Marin",
+#                      "Mendocino",
+#                      "Del Norte"
+#                      ))
+```
+
+```{r}
+# Check the crs of the data before cropping
+# st_crs(socal_counties) == st_crs(MPA_boundary)
+```
+
+```{r}
+# Cropping the MPAs to each CA region
+# socal_MPAs <- st_crop(MPA_boundary, socal_counties)
+# 
+# central_MPAs <- st_crop(MPA_boundary, central_counties)
+# 
+# norcal_MPAs <- st_crop(MPA_boundary, norcal_counties)
+```
+
+```{r}
+# Define our color palette
+# Lake <-cal_palette(name = "lake", n = 20, type = "continuous")
+# MPA_types_pal <- c('#C4A9C2', '#CEB6AD', '#D8C397', '#A5CEA4', '#09EEC8', '#6EA1C8', '#3C7BB7', '#796655')
+```
+
+```{r}
+# Create a map of Socal MPAs colored by Zone type
+# tm_shape(socal_counties) +
+#   tm_polygons(col= "beige")+
+# tm_shape(socal_MPAs) +
+#   tm_polygons(col= "Type",
+#               title= "Protected Area Type",
+#               palette= MBM_pal) +
+#   tm_layout(bg.color= "skyblue")
+```
