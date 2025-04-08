@@ -1,6 +1,6 @@
 ```{r}
 # load libraries
-librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext)
+librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext, leaflet)
 ```
 
 ## Here is what the PMEP depth zones stand for, according to the metadata:
@@ -397,21 +397,96 @@ ggplot(total_depth_avg, aes(x = reorder(PMEP_Zone, avg_percentage), y = avg_perc
 
 
 
-
-
 # SOCAL BIOREGION ANALYSIS! AND A LOOK AT THE CHANNEL ISLANDS
 
 ```{r}
 # List all MPAs in southern CA
 unique(south_sub_mpa$shortname)
 ```
+```{r}
+tm_shape(south_sub_mpa) +
+  tm_polygons() 
+```
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+south_sub_mpa <- st_transform(south_sub_mpa, crs = 4326)
+
+# Create a color palette for the `pmep_zone_detail` variable
+color_palette <- colorFactor(
+  palette = c('#C4A9C2', '#CEB6AD', '#D8C397', '#A5CEA4', '#71D9B0', 
+              '#09EEC8', '#22CFA7', '#3BAF85', '#6EA1C8', '#3C7BB7', '#796655'),
+  domain = south_sub_mpa$pmep_zone_detail
+)
+
+# Generate the Leaflet map
+leaflet() |>
+  addProviderTiles(providers$CartoDB.Positron) |>
+  setView(lng = -119.6989,
+          lat = 34.4203,
+          zoom = 8) |>
+  addMiniMap(toggleDisplay = TRUE,
+             minimized = FALSE) |>
+  addPolygons(data = south_sub_mpa,
+              color = ~color_palette(pmep_zone_detail), # Apply the color palette
+              weight = 3,
+              popup = paste0("MPA Name:  ", south_sub_mpa$shortname, "<br>",
+                            "MPA Type:  ", south_sub_mpa$type, "<br>",
+                            "PMEP Zone Detail:  ", south_sub_mpa$pmep_zone_detail))
+```
+
+Looking at the leaflet above im noticing some unexpected missing mpas... is it the substrate data?
+
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+
+# Map
+leaflet() |>
+  addProviderTiles(providers$CartoDB.Positron) |>
+  setView(lng = -119.6989,
+          lat = 34.4203,
+          zoom = 8) |>
+  addMiniMap(toggleDisplay = TRUE,
+             minimized = FALSE) |>
+  addPolygons(data = mpas,
+              color = "#09EEC8",
+              weight = 3,
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                            "MPA Type:  ", mpas$type))
+```
+
+
+OK, theres definitely MPAs there... lets look at the substrate data and see if any data looks like its missing, or maybe there just isnt substate data for those areas?
+
+```{r}
+harris_point_sub <- south_sub_mpa |> 
+  filter(shortname == "Harris Point") 
+
+tm_shape(harris_point_sub) +
+  tm_polygons(col = )
+```
 
 
 
+```{r}
+font_add_google("Montserrat", "montserrat")
+showtext_auto()
 
-
-
-
+# Create base map with the colored polygons
+tm_shape(lobos_substrate_depth_geo) +
+  tm_polygons(col = "pmep_zone_detail",
+              palette = c('#09EEC8','#6EA1C8', '#3C7BB7'),
+              title = "Depth\nZones",
+              labels = c("Zone 0", "Zone 2", "Zone 4", "Zone 6", "Zone 8")) +
+  # Add the same shape again but with solid fill to mask underlying features
+  tm_shape(lobos_substrate_depth_geo) +
+  tm_fill(col = "pmep_zone_detail",
+          palette = c('#09EEC8','#6EA1C8', '#3C7BB7'),
+          legend.show = FALSE) +  # Don't show this in legend
+  tm_layout(legend.position = c("right", "bottom"),
+            legend.title.fontfamily = "montserrat",
+            legend.text.fontfamily = "montserrat") 
+```
 
 
 
