@@ -20,8 +20,11 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 
 ```{r}
 # Read in substrate and biotic data
-substrate <- readRDS("substrate.rds")
-biota <- readRDS("Biota.rds") |>
+#substrate <- readRDS("substrate.rds")
+#biota <- readRDS("Biota.rds") |>
+#  clean_names()
+
+biota <- Biota |>
   clean_names()
 
 # Read in MPA boundaries data
@@ -120,7 +123,7 @@ This chunk makes a map of Point Lobos
 font_add_google("Montserrat", "montserrat")
 showtext_auto()
 
-# Create your base map with the colored polygons
+# Create base map with the colored polygons
 tm_shape(lobos_substrate_depth_geo) +
   tm_polygons(col = "pmep_zone_detail",
               palette = c('#09EEC8','#6EA1C8', '#3C7BB7'),
@@ -222,7 +225,7 @@ lobos_long |>
 
 #### BUT i can do it in 3s, remove the geometry, and then join the three simple dfs to run analysis, without doing too much comp. NO NEED to make a big statewide map..............at least not yet
 
-## BUT FIRST IM GOING TO HAVE TO BREAK THIS DOWN INTO SMALLER CATEGORIES because there are some invalid polygons preventing analysis, and st_make_valid was not gonna run on a file this size
+## BUT FIRST IM GOING TO HAVE TO BREAK THIS DOWN INTO SMALLER CATEGORIES because there are some invalid polygons preventing analysis, and st_make_valid was not gonna run on a file this size. 
 
 ```{r}
 names(mpas)
@@ -391,6 +394,17 @@ ggplot(total_depth_avg, aes(x = reorder(PMEP_Zone, avg_percentage), y = avg_perc
         axis.title.y = element_text(family = "montserrat", size = 16)) 
 ```
 
+
+
+
+
+
+# SOCAL BIOREGION ANALYSIS! AND A LOOK AT THE CHANNEL ISLANDS
+
+```{r}
+# List all MPAs in southern CA
+unique(south_sub_mpa$shortname)
+```
 
 
 
