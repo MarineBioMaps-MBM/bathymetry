@@ -1,0 +1,223 @@
+---
+title: "California Statewide Depth Zones Analysis"
+author: "Bailey Jørgensen"
+format: html
+editor: visual
+---
+
+```{r}
+# load libraries
+librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext, leaflet)
+```
+
+## Here is what the PMEP depth zones stand for, according to the metadata:
+### NOTE: The substrate data records the whole name, rather than using the # code
+
+- Value 0: Landward Zone
+- Value 1: Core Zone (Estuary Overlap)
+- Value 2: Core Zone (Shoreline to -30m), State Waters
+- Value 3: Core Zone (Shoreline to -30m), Federal Waters
+- Value 4: Seaward Zone (-30m to -100m), State Waters
+- Value 5: Seaward Zone (-30m to -100m), Federal Waters
+- Value 6: Deep Shelf or Channel (-100m to -200m), State Waters
+- Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
+- Value 8: Outside PMEP Score (>-300m) or International Waters
+
+## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota. 
+
+## Read in substrate, biota and MPA data
+
+```{r}
+# Read in substrate and biotic data ... Commented out, because I chose to load the RDS files into my environment prior to this
+#substrate <- readRDS("substrate.rds")
+#biota <- readRDS("Biota.rds") |>
+#  clean_names()
+
+biota <- Biota |>
+  clean_names()
+
+# Read in MPA boundaries data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+# Clean and transform MPA boundaries data
+mpas <- mpa_boundaries |> 
+  clean_names() |> 
+  select("type", "shortname", "geometry") |> 
+  st_transform(mpas, crs = st_crs(substrate)) |> 
+  st_make_valid()
+
+# Filter the substrate data to just the variables I'm interested in - KEEP GEO
+depth_zones_sub_filtered <- substrate |>
+  select("pmep_zone_detail", "Shape", "pmep_region")
+```
+
+## OK HERE... I AM TRYING TO COMBINE THE DATA SO THAT I CAN DO FULL MPA ANALYSIS...
+
+### I can run stats on the data after removing the geometry column.......but first i have to join the geospatial data together to get the mpas overlain with the sub....
+
+#### BUT i can do it in 3s, remove the geometry, and then join the three simple dfs to run analysis, without doing too much comp. NO NEED to make a big statewide map..............at least not yet
+
+## BUT FIRST IM GOING TO HAVE TO BREAK THIS DOWN INTO SMALLER CATEGORIES because there are some invalid polygons preventing analysis, and st_make_valid was not gonna run on a file this size. 
+
+
+```{r}
+# Filter to North
+north_sub <- depth_zones_sub_filtered |>
+  filter(pmep_region == "Pacific Northwest")
+
+# Filter to Central
+central_sub <- depth_zones_sub_filtered |>
+  filter(pmep_region == "Central California")
+
+# Filter to Southern
+south_sub <- depth_zones_sub_filtered |>
+  filter(pmep_region == "Southern California Bight")
+```
+
+```{r}
+north_sub_mpa <- st_intersection(mpas, north_sub)
+```
+
+```{r}
+central_sub_mpa <- st_intersection(mpas, central_sub)
+```
+
+```{r}
+south_sub_mpa <- st_intersection(mpas, south_sub)
+```
+
+## All of the mpas and substrates were able to be combined in the separate regions....SO THE INVALID POLYGONS ARE PROBABLY IN THE REGION OVERLAP
+
+```{r}
+# Make NON GEO dfs for each region
+north_sub_mpa_simple <- north_sub_mpa |> 
+  st_drop_geometry()
+
+central_sub_mpa_simple <- central_sub_mpa |> 
+  st_drop_geometry()
+
+south_sub_mpa_simple <- south_sub_mpa |> 
+  st_drop_geometry()
+```
+
+```{r}
+# COMBINE the simple dfs into one big simple df for all of CA depth zones!!!!!!!
+california_depths_simple <- bind_rows(north_sub_mpa_simple, central_sub_mpa_simple, south_sub_mpa_simple)
+```
+
+```{r}
+unique(california_depths_simple$shortname)
+```
+
+#### I am going to calculate the percentages of each MPA that are in each depth zone
+
+
+```{r}
+
+# Step 2: Make sure pmep_zone is treated as a factor (categorical)
+california_depths_simple$pmep_zone_detail <- as.factor(california_depths_simple$pmep_zone_detail)
+
+# Step 3: Calculate the percentages for each shortname and pmep_zone combination
+depth_zones_mpas <- california_depths_simple |>
+  # Group by shortname and pmep_zone to count occurrences
+  group_by(shortname, pmep_zone_detail) |>
+  summarise(count = n(), .groups = "drop") |>
+  
+  # Group by shortname to calculate total count for each shortname
+  group_by(shortname) %>%
+  mutate(percentage = count / sum(count) * 100) |>
+  
+  # Reshape data to have a column for each unique pmep_zone
+  select(-count) |>
+  pivot_wider(
+    names_from = pmep_zone_detail,
+    values_from = percentage) |>
+    #values_fill = 0)  |> # Fill NA values with 0
+  
+  # Rename columns to also reflect PMEP zone code
+  rename(
+    "Marine Protected Area" = "shortname",
+    "Zone 6: Deep Shelf or Sound (-100m to -200m), State Waters" = "Deep Shelf or Sound (-100m to -200m), State Waters" ,
+    "Zone 8: Outside PMEP Scope (>-200m) or International Waters" = "Outside PMEP Scope (>-200m) or International Waters",
+    #"No Data" =  "NA",
+    "Zone 5: Seaward Zone (-30m to -100m), Federal" = "Seaward Zone (-30m to -100m), Federal",
+    "Zone 2: Core Zone (Shoreline to -30m), State Waters" = "Core Zone (Shoreline to -30m), State Waters",
+    "Zone 0: Landward Zone" = "Landward Zone",
+    "Zone 4: Seaward Zone (-30m to -100m), State Waters" = "Seaward Zone (-30m to -100m), State Waters",
+    "Zone 7: Deep Shelf or Sound (-100m to -200m), Federal" = "Deep Shelf or Sound (-100m to -200m), Federal",
+    "Zone 3: Core Zone (Shoreline to -30m), Federal" = "Core Zone (Shoreline to -30m), Federal"
+  ) |>
+  # Put the columns in desired order
+  select(
+    "Marine Protected Area",
+    "Zone 0: Landward Zone",
+    "Zone 2: Core Zone (Shoreline to -30m), State Waters",
+    "Zone 3: Core Zone (Shoreline to -30m), Federal",
+    "Zone 4: Seaward Zone (-30m to -100m), State Waters",
+    "Zone 5: Seaward Zone (-30m to -100m), Federal",
+    "Zone 6: Deep Shelf or Sound (-100m to -200m), State Waters",
+    "Zone 7: Deep Shelf or Sound (-100m to -200m), Federal",
+    "Zone 8: Outside PMEP Scope (>-200m) or International Waters"
+  )
+  
+```
+
+
+```{r}
+# Make a pivot longer table
+depth_zones_long <- depth_zones_mpas %>%
+  pivot_longer(
+    cols = -`Marine Protected Area`, 
+    names_to = "PMEP_Zone",
+    values_to = "Percentage"
+  )
+```
+
+
+```{r}
+# Calculate mean percentage for each PMEP zone, ignoring NA values
+total_depth_avg <- depth_zones_long %>%
+  group_by(PMEP_Zone) %>%
+  summarise(
+    avg_percentage = mean(Percentage, na.rm = TRUE),
+    n_mpas = sum(!is.na(Percentage)),  # Count of MPAs with data for this zone
+    total_mpas = n_distinct(`Marine Protected Area`, na.rm = TRUE)  # Total MPAs in dataset
+  ) %>%
+  mutate(
+    coverage = n_mpas / total_mpas * 100  # Percentage of MPAs that have this zone
+  )
+
+# Sort by average percentage...
+total_depth_avg <- total_depth_avg %>%
+  arrange(desc(avg_percentage))
+```
+
+```{r}
+# Make a plot!!
+ggplot(total_depth_avg, aes(x = reorder(PMEP_Zone, avg_percentage), y = avg_percentage)) +
+  geom_col(fill = '#09EEC8') +
+  coord_flip() +  # Horizontal bars
+  labs(
+    title = "What is the Average % Cover of any given **Depth Zone**<br>within California MPAs?",
+    x = NULL,
+    y = "Average Percentage Composition of Depths per Zone"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_markdown(size = 30, hjust = 1, family = "montserrat"),
+        axis.text.x = element_text(family = "montserrat", size = 14),  
+        axis.text.y = element_text(family = "montserrat", size = 14),  
+        axis.title.x = element_text(family = "montserrat", size = 16),  
+        axis.title.y = element_text(family = "montserrat", size = 16)) 
+```
+
+
+
+
+
+
+
+
+
+
+
