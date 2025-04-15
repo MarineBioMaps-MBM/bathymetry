@@ -16,6 +16,6 @@
 
 ### Data:
 
-.rds files created in the Biota and Substrate repositories from this organization were used to load in the PMEP data filtered to California. See those repositories to access these files. 
+.rds files created in the Biota and Substrate repositories from this MarineBioMaps Github Organization were used to load in the PMEP data filtered to California. See those repositories to access these .rds files. 
 
 Shapefiles for CA MPA Boundaries were downloaded from the [California Department of Fish and Wildlife](https://data.ca.gov/dataset/california-marine-protected-areas-ds582).
