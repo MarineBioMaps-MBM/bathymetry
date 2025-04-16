@@ -46,3 +46,14 @@ mpas <- mpa_boundaries |>
 depth_zones_sub_filtered <- substrate |>
   select("pmep_zone_detail", "Shape", "pmep_region")
 ```
+
+```{r}
+# Create variables for SoCal analysis (these were calculated in the Statewide analysis QMD)
+south_sub <- depth_zones_sub_filtered |>
+  filter(pmep_region == "Southern California Bight")
+
+south_sub_mpa <- st_intersection(mpas, south_sub)
+
+south_sub_mpa_simple <- south_sub_mpa |> 
+  st_drop_geometry()
+```
