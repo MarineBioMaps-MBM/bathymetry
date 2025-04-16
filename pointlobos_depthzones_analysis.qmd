@@ -2,7 +2,6 @@
 title: "Point Lobos Depth Zones Analysis"
 author: "Bailey Jørgensen"
 format: html
-editor: visual
 ---
 
 ```{r}
@@ -11,19 +10,20 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 ```
 
 ## Here is what the PMEP depth zones stand for, according to the metadata:
+
 ### NOTE: The substrate data records the whole name, rather than using the # code
 
-- Value 0: Landward Zone
-- Value 1: Core Zone (Estuary Overlap)
-- Value 2: Core Zone (Shoreline to -30m), State Waters
-- Value 3: Core Zone (Shoreline to -30m), Federal Waters
-- Value 4: Seaward Zone (-30m to -100m), State Waters
-- Value 5: Seaward Zone (-30m to -100m), Federal Waters
-- Value 6: Deep Shelf or Channel (-100m to -200m), State Waters
-- Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
-- Value 8: Outside PMEP Score (>-300m) or International Waters
+-   Value 0: Landward Zone
+-   Value 1: Core Zone (Estuary Overlap)
+-   Value 2: Core Zone (Shoreline to -30m), State Waters
+-   Value 3: Core Zone (Shoreline to -30m), Federal Waters
+-   Value 4: Seaward Zone (-30m to -100m), State Waters
+-   Value 5: Seaward Zone (-30m to -100m), Federal Waters
+-   Value 6: Deep Shelf or Channel (-100m to -200m), State Waters
+-   Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
+-   Value 8: Outside PMEP Score (\>-300m) or International Waters
 
-## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota. 
+## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota.
 
 ## Read in substrate, biota and MPA data
 
@@ -44,6 +44,7 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 ### Combine the MPA boundary data with the substrate data
 
 This code chunk filters ALL mpas - keeps geo
+
 ```{r}
 # Clean boundaries data and get it ready for joining - Michelle's code is commented out. Use?
 mpas <- mpa_boundaries |> 
@@ -59,6 +60,7 @@ mpas <- mpa_boundaries |>
 ```
 
 This code chunk selects substrate cats i want - keeps geo (REVISIT THIS IS MORE CATEGORIES ARE NEEDED IN THE FUTURE)
+
 ```{r}
 # FIrst, filter the substrate data to just the variables I'm interested in
 depth_zones_sub_filtered <- substrate |>
@@ -77,6 +79,7 @@ lobos_substrate_depth_geo <- st_intersection(point_lobos, depth_zones_sub_filter
 ```
 
 Rename the pmep zones
+
 ```{r}
 lobos_substrate_depth_geo <- lobos_substrate_depth_geo %>%
   mutate(pmep_zone_detail = recode(pmep_zone_detail,
@@ -90,7 +93,6 @@ lobos_substrate_depth_geo <- lobos_substrate_depth_geo %>%
 ```{r}
 unique(lobos_substrate_depth_geo$pmep_zone_detail)
 ```
-
 
 ### This chunk makes a map of Point Lobos Depth Zones!
 
@@ -189,8 +191,3 @@ lobos_long |>
   tab_source_note(md("*Depth Zones classified by the Pacific Marine and Estuarine Partnership (PMEP)*")) 
 
 ```
-
-
-
-
-
