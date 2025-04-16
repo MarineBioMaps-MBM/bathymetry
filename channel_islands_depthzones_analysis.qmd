@@ -29,13 +29,11 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 ## Read in substrate, biota and MPA data
 
 ```{r}
-# Read in substrate and biotic data...commented out because I chose to load the RDS files directly into the environment
-#substrate <- readRDS("substrate.rds")
-#biota <- readRDS("Biota.rds") |>
-#  clean_names()
+# Read in substrate and biotic data...commented out because I chose to load the RDS files directly into the environment - uncomment to render
+# substrate <- readRDS(here("data", "substrate.rds"))
+# biota <- readRDS(here("data", "biota.rds")) |>
+#   clean_names()
 
-biota <- Biota |>
-  clean_names()
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
