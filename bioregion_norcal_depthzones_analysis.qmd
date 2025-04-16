@@ -1,0 +1,51 @@
+---
+title: "Bioregion: Northern California Depth Zones Analysis"
+author: "Bailey Jørgensen"
+format: html
+editor: source
+---
+
+```{r}
+# load libraries
+librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext, leaflet)
+```
+
+## Here is what the PMEP depth zones stand for, according to the metadata:
+### NOTE: The substrate data records the whole name, rather than using the # code
+
+- Value 0: Landward Zone
+- Value 1: Core Zone (Estuary Overlap)
+- Value 2: Core Zone (Shoreline to -30m), State Waters
+- Value 3: Core Zone (Shoreline to -30m), Federal Waters
+- Value 4: Seaward Zone (-30m to -100m), State Waters
+- Value 5: Seaward Zone (-30m to -100m), Federal Waters
+- Value 6: Deep Shelf or Channel (-100m to -200m), State Waters
+- Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
+- Value 8: Outside PMEP Score (>-300m) or International Waters
+
+## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota. 
+
+## Read in substrate, biota and MPA data
+
+```{r}
+# Read in substrate and biotic data...commented out because I chose to load the RDS files directly into the environment - uncomment to render
+# substrate <- readRDS(here("data", "substrate.rds"))
+# biota <- readRDS(here("data", "biota.rds")) |>
+#   clean_names()
+
+
+# Read in MPA boundaries data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+# Clean and transform MPA boundaries data
+mpas <- mpa_boundaries |> 
+  clean_names() |> 
+  select("type", "shortname", "geometry") |> 
+  st_transform(mpas, crs = st_crs(substrate)) |> 
+  st_make_valid()
+
+# Filter the substrate data to just the variables I'm interested in - KEEP GEO
+depth_zones_sub_filtered <- substrate |>
+  select("pmep_zone_detail", "Shape", "pmep_region")
+```
