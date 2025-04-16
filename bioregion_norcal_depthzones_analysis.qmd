@@ -49,3 +49,59 @@ mpas <- mpa_boundaries |>
 depth_zones_sub_filtered <- substrate |>
   select("pmep_zone_detail", "Shape", "pmep_region")
 ```
+
+```{r}
+# Filter to North
+north_sub <- depth_zones_sub_filtered |>
+  filter(pmep_region == "Pacific Northwest")
+
+# All norcal MPAs with the substrate data within them
+north_sub_mpa <- st_intersection(mpas, north_sub)
+
+# Simple, no geo
+north_sub_mpa_simple <- north_sub_mpa |> 
+  st_drop_geometry()
+```
+
+```{r}
+north_sub_mpa$shortname
+```
+Well, fuck, realizing that there is some name repeating here, and not all of the MPAs I expect are here...why might that be?
+
+Make a basic Leaflet map of just the Norcal MPAs...to not include the substrate data, I will have to do some filtering, so I can use just the MPA data, but with the NorCal MPAS included in the PMEP Norcal Bioregion
+
+```{r}
+# Filter MPAs data to just these ones - ADD MORE THAT ARE NORCAL MPAS - FIGURE OUT WHATS WRONG WITH PMEP DATA FILTERING
+shortname_list <- c(
+  "Pyramid Point",
+  "Southwest Seal Rock",
+  "Castle Rock",
+  "False Klamath Rock",
+  "Reading Rock",
+  "Samoa",
+  "Point St. George Reef Offshore"
+)
+
+mpas_norcal <- mpas |> 
+  filter(shortname %in% shortname_list)
+  
+
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+
+# Map
+leaflet() |>
+  addProviderTiles(providers$CartoDB.Positron) |>
+  setView(lng = -119.6989,
+          lat = 34.4203,
+          zoom = 8) |>
+  addMiniMap(toggleDisplay = TRUE,
+             minimized = FALSE) |>
+  addPolygons(data = mpas,
+              color = "#09EEC8",
+              weight = 3,
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                            "MPA Type:  ", mpas$type))
+
+```
+
