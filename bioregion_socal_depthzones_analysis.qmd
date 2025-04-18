@@ -44,7 +44,7 @@ mpas <- mpa_boundaries |>
 
 # Filter the substrate data to just the variables I'm interested in - KEEP GEO
 depth_zones_sub_filtered <- substrate |>
-  select("pmep_zone_detail", "Shape", "pmep_region")
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
 
 ```{r}
