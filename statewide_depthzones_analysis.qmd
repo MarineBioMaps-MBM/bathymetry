@@ -11,7 +11,7 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 
 ## Here is what the PMEP depth zones stand for, according to the metadata:
 
-### NOTE: The substrate data records the whole name, rather than using the \# code
+### NOTE: The substrate data records the whole name, rather than using the # code
 
 -   Value 0: Landward Zone
 -   Value 1: Core Zone (Estuary Overlap)
@@ -20,8 +20,8 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 -   Value 4: Seaward Zone (-30m to -100m), State Waters
 -   Value 5: Seaward Zone (-30m to -100m), Federal Waters
 -   Value 6: Deep Shelf or Channel (-100m to -200m), State Waters
--   Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
--   Value 8: Outside PMEP Score (\>-300m) or International Waters
+-   Value 7: Deep Shelf or Channel (-100m to -200m), Federal WatersLN
+-   Value 8: Outside PMEP Score (>-300m) or International Waters
 
 ## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota.
 
@@ -45,7 +45,7 @@ mpas <- mpa_boundaries |>
 
 # Filter the substrate data to just the variables I'm interested in - KEEP GEO
 depth_zones_sub_filtered <- substrate |>
-  select("pmep_zone_detail", "Shape", "pmep_region")
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
 
 ## OK HERE... I AM TRYING TO COMBINE THE DATA SO THAT I CAN DO FULL MPA ANALYSIS...
@@ -132,30 +132,32 @@ depth_zones_mpas <- california_depths_simple |>
   # Rename columns to also reflect PMEP zone code
   rename(
     "Marine Protected Area" = "shortname",
-    "Zone 6: Deep Shelf or Sound (-100m to -200m), State Waters" = "Deep Shelf or Sound (-100m to -200m), State Waters" ,
-    "Zone 8: Outside PMEP Scope (>-200m) or International Waters" = "Outside PMEP Scope (>-200m) or International Waters",
+    "Zone 6" = "Deep Shelf or Sound (-100m to -200m), State Waters" ,
+    "Zone 8" = "Outside PMEP Scope (>-200m) or International Waters",
     #"No Data" =  "NA",
-    "Zone 5: Seaward Zone (-30m to -100m), Federal" = "Seaward Zone (-30m to -100m), Federal",
-    "Zone 2: Core Zone (Shoreline to -30m), State Waters" = "Core Zone (Shoreline to -30m), State Waters",
-    "Zone 0: Landward Zone" = "Landward Zone",
-    "Zone 4: Seaward Zone (-30m to -100m), State Waters" = "Seaward Zone (-30m to -100m), State Waters",
-    "Zone 7: Deep Shelf or Sound (-100m to -200m), Federal" = "Deep Shelf or Sound (-100m to -200m), Federal",
-    "Zone 3: Core Zone (Shoreline to -30m), Federal" = "Core Zone (Shoreline to -30m), Federal"
+    "Zone 5" = "Seaward Zone (-30m to -100m), Federal",
+    "Zone 2" = "Core Zone (Shoreline to -30m), State Waters",
+    "Zone 0" = "Landward Zone",
+    "Zone 4" = "Seaward Zone (-30m to -100m), State Waters",
+    "Zone 7" = "Deep Shelf or Sound (-100m to -200m), Federal",
+    "Zone 3" = "Core Zone (Shoreline to -30m), Federal"
   ) |>
   # Put the columns in desired order
   select(
     "Marine Protected Area",
-    "Zone 0: Landward Zone",
-    "Zone 2: Core Zone (Shoreline to -30m), State Waters",
-    "Zone 3: Core Zone (Shoreline to -30m), Federal",
-    "Zone 4: Seaward Zone (-30m to -100m), State Waters",
-    "Zone 5: Seaward Zone (-30m to -100m), Federal",
-    "Zone 6: Deep Shelf or Sound (-100m to -200m), State Waters",
-    "Zone 7: Deep Shelf or Sound (-100m to -200m), Federal",
-    "Zone 8: Outside PMEP Scope (>-200m) or International Waters"
+    "Zone 0",
+    "Zone 2",
+    "Zone 3",
+    "Zone 4",
+    "Zone 5",
+    "Zone 6",
+    "Zone 7",
+    "Zone 8"
   )
   
 ```
+
+# This does the same thing, but makes it a long table instead of wide
 
 ```{r}
 # Make a pivot longer table
@@ -167,41 +169,17 @@ depth_zones_long <- depth_zones_mpas %>%
   )
 ```
 
-```{r}
-# Calculate mean percentage for each PMEP zone, ignoring NA values
-total_depth_avg <- depth_zones_long %>%
-  group_by(PMEP_Zone) %>%
-  summarise(
-    avg_percentage = mean(Percentage, na.rm = TRUE),
-    n_mpas = sum(!is.na(Percentage)),  # Count of MPAs with data for this zone
-    total_mpas = n_distinct(`Marine Protected Area`, na.rm = TRUE)  # Total MPAs in dataset
-  ) %>%
-  mutate(
-    coverage = n_mpas / total_mpas * 100  # Percentage of MPAs that have this zone
-  )
 
-# Sort by average percentage...
-total_depth_avg <- total_depth_avg %>%
-  arrange(desc(avg_percentage))
-```
 
-```{r}
-# Make a plot!!
-ggplot(total_depth_avg, aes(x = reorder(PMEP_Zone, avg_percentage), y = avg_percentage)) +
-  geom_col(fill = '#09EEC8') +
-  coord_flip() +  # Horizontal bars
-  labs(
-    title = "What is the Average % Cover of any given **Depth Zone**<br>within California MPAs?",
-    x = NULL,
-    y = "Average Percentage Composition of Depths per Zone"
-  ) +
-  theme_bw() +
-  theme(plot.title = element_markdown(size = 30, hjust = 1, family = "montserrat"),
-        axis.text.x = element_text(family = "montserrat", size = 14),  
-        axis.text.y = element_text(family = "montserrat", size = 14),  
-        axis.title.x = element_text(family = "montserrat", size = 16),  
-        axis.title.y = element_text(family = "montserrat", size = 16)) 
-```
+
+
+
+
+
+
+
+
+
 
 # More Visuals for Report: 
 
