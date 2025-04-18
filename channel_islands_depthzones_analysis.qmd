@@ -47,8 +47,9 @@ mpas <- mpa_boundaries |>
   st_make_valid()
 
 # Filter the substrate data to just the variables I'm interested in - KEEP GEO
+# Filter the substrate data to just the variables I'm interested in - KEEP GEO
 depth_zones_sub_filtered <- substrate |>
-  select("pmep_zone_detail", "Shape", "pmep_region")
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
 ```{r}
 # Create variables for SoCal analysis (these were calculated in the Statewide analysis QMD)
@@ -65,7 +66,7 @@ south_sub_mpa_simple <- south_sub_mpa |>
 # SOCAL BIOREGION ANALYSIS! AND A LOOK AT THE CHANNEL ISLANDS
 
 ```{r}
-# List all MPAs in southern CA
+# List all MPAs in southern CA...ideally
 unique(south_sub_mpa$shortname)
 ```
 
@@ -73,6 +74,7 @@ unique(south_sub_mpa$shortname)
 tm_shape(south_sub_mpa) +
   tm_polygons() 
 ```
+Hmmm... this is definitely not plotting all of the mpas...why might that be???
 
 ```{r}
 # Transform CRS for this map, since leaflet requires WGS84
@@ -131,8 +133,67 @@ harris_point_sub <- south_sub_mpa |>
 tm_shape(harris_point_sub) +
   tm_polygons()
 ```
+```{r}
+# This is what the Harris Point MPA is supposed to look like...
+harris_point_mpa <- mpas |> 
+  filter(shortname == "Harris Point")
 
-Wow that looks jacked up...gotta troubleshoot
+tm_shape(harris_point_mpa) +
+  tm_polygons()
+```
+
+
+
+Wow that is jacked up...gotta troubleshoot
+
+
+Let me see if I can map all of the substrate data for the Channel Islands:
+
+Coordinates found here: https://sanctuaries.noaa.gov/library/coord_cinms.html
+
+```{r}
+# Define the bounding box for the channel islands ... use SOUTH_SUB to avoid the invalid polygons
+channel_islands_bbox <- st_as_sfc(st_bbox(c(
+  xmin = -120.642080, # Westernmost longitude
+  ymin = 33.362410,   # Southernmost latitude
+  xmax = -118.907120, # Easternmost longitude
+  ymax = 34.207070    # Northernmost latitude
+), crs = 4326)) # CRS 4326 corresponds to WGS84
+
+# Visualize the bounding box (optional)
+plot(channel_islands_bbox, col = "goldenrod")
+
+# Transform the CRS of south_sub to match the bounding box
+south_sub_wgs84 <- st_transform(south_sub, st_crs(channel_islands_bbox))
+
+# Verify the transformation
+st_crs(south_sub_wgs84) == st_crs(channel_islands_bbox)
+```
+
+
+```{r}
+# Getting errors about polygon validity...
+south_sub_valid <- st_make_valid(south_sub_transformed)
+
+# Filter the data to include only features within the bounding box
+allsub_sbcounty <- st_intersection(south_sub_transformed, channel_islands_bbox)
+
+# Verify the filtered data
+plot(allsub_sbcounty)
+```
+
+```{r}
+overlap_check <- st_intersects(south_sub_transformed, channel_islands_bbox, sparse = FALSE)
+any(overlap_check)
+```
+```{r}
+plot(sb_bbox)
+```
+
+
+```{r}
+summary(south_sub)
+```
 
 
 
