@@ -329,9 +329,32 @@ ggplot(zone0_with_sub, aes(x = cmecs_sc_name, y = percent_of_total0)) +
   geom_text(aes(label = paste0(round(percent_of_total0, 1), "%")), 
             vjust = -0.5, size = 3.5)
 ```
+```{r}
+# Calculate Zone 2 sub!!
+```
+
+```{r}
+# Calculate Zone 4 sub!!
+```
+
+```{r}
+# Calculate Zone 6 sub!! 
+```
 
 
 
+```{r}
+# Lets try and add a biota layer to zone 0, to complete this thought experiment
+colnames(biota)
+```
+
+```{r}
+unique(biota$cmecs_bc_name)
+```
+
+```{r}
+unique(substrate$cmecs_sc_category)
+```
 
 
 
