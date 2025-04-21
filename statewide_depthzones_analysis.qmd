@@ -217,12 +217,19 @@ ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
 ```
 *Where is zone 1?? not in MPAs apparently...gonna look into that. There is probably some zone 1 outside of mpas- where is it at?*
 
+```{r}
+colnames(substrate)
+```
+
+
+
+
 
 # STATEWIDE COMPARATIVE ANALYSIS.
 
 ```{r}
 depths_with_sub <- substrate |> 
-  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name") |> 
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name", "cmecs_sc_category") |> 
   mutate(pmep_zone_detail = case_when(
     pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
     pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
@@ -235,7 +242,7 @@ depths_with_sub <- substrate |>
   ))
 
 depths_with_sub_simple <- substrate |> 
-  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name") |> 
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name", "cmecs_sc_category") |> 
   mutate(pmep_zone_detail = case_when(
     pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
     pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
@@ -282,7 +289,7 @@ zone8_df <- depths_with_sub_simple |>
 ```
 
 ```{r}
-unique(zone8_df$cmecs_sc_name)
+unique(zone8_df$cmecs_sc_category)
 ```
 
 ```{r}
@@ -292,16 +299,16 @@ print(paste0("The total area of Zone 0 in Ha: ", round(total_ha_zone0, 2)))
 
 # Calculate percentage of substrates per depth zone
 zone0_with_sub <- zone0_df |> 
-  group_by(cmecs_sc_name) |> 
+  group_by(cmecs_sc_category) |> 
   summarize(persub_area_ha0 = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
   mutate(percent_of_total0 = (persub_area_ha0 / total_ha_zone0) * 100)
 
 # Print formatted output
 zone0_with_sub |> 
-  arrange(cmecs_sc_name) |> 
+  arrange(cmecs_sc_category) |> 
   rowwise() |> 
   mutate(print_statement = paste0(
-    cmecs_sc_name, 
+    cmecs_sc_category, 
     ": ", 
     round(persub_area_ha0, 2), " ha (", 
     round(percent_of_total0, 2), "% of total)"
@@ -310,6 +317,7 @@ zone0_with_sub |>
   cat(sep = "\n")
 
 ```
+**NOTE: I ran this analysis with cmecs_sc_name as well, and it was interesting, but a lot of categories with very small #s. This reinforces the decision we made as a team to use the cmecs_sc_category column intead for our analysis, as it groups some of these smaller categories together. I will leave a graph example in the outputs folder of this repository as an illustration of this, but will move on to using cmecs_sc_category unless otherwise instructed.**
 
 ```{r}
 # zone_areas_filtered <- zone_areas |> 
@@ -317,7 +325,7 @@ zone0_with_sub |>
 #   mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
 
 
-ggplot(zone0_with_sub, aes(x = cmecs_sc_name, y = percent_of_total0)) +
+ggplot(zone0_with_sub, aes(x = cmecs_sc_category, y = percent_of_total0)) +
   geom_col(fill = "#796655") +
   labs(
     title = "Substrates represented in Depth Zone 0",
@@ -347,6 +355,10 @@ ggplot(zone0_with_sub, aes(x = cmecs_sc_name, y = percent_of_total0)) +
 # Lets try and add a biota layer to zone 0, to complete this thought experiment
 colnames(biota)
 ```
+```{r}
+unique(biota$pmep_zone)
+```
+**NOTE: There are no biota recorded in zone 0 in this dataset. This is a pretty big gap for this particular visualization, which has depth zones as it base. Could be worth figuring out why zone 0 is absent in this case**
 
 ```{r}
 unique(biota$cmecs_bc_name)
@@ -354,6 +366,19 @@ unique(biota$cmecs_bc_name)
 
 ```{r}
 unique(substrate$cmecs_sc_category)
+```
+**Note about filtering below - I don't see an area_ha column, like there was in the substrate RDS. Check with Maddy?**
+
+```{r}
+# Filter biota to just the categories we need for this viz
+depths_with_biota <- biota |> 
+  select("pmep_zone", "Shape", "pmep_region", "shape_area", "cmecs_bc_name", "cmecs_bc_category")
+
+depths_with_biota_simple <- biota |> 
+  select("pmep_zone", "Shape", "pmep_region", "shape_area", "cmecs_bc_name", "cmecs_bc_category") |> 
+  st_drop_geometry()
+
+unique(depths_with_biota$pmep_zone)
 ```
 
 
