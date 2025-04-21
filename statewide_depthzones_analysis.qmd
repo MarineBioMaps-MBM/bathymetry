@@ -215,16 +215,120 @@ ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
         axis.text.y = element_blank())
 
 ```
-
-
-
 *Where is zone 1?? not in MPAs apparently...gonna look into that. There is probably some zone 1 outside of mpas- where is it at?*
 
 
+# STATEWIDE COMPARATIVE ANALYSIS.
+
+```{r}
+depths_with_sub <- substrate |> 
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name") |> 
+  mutate(pmep_zone_detail = case_when(
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
+    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
+    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
+  ))
+
+depths_with_sub_simple <- substrate |> 
+  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name") |> 
+  mutate(pmep_zone_detail = case_when(
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
+    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
+    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
+  )) |> 
+  st_drop_geometry()
+
+unique(depths_with_sub$pmep_zone_detail)
+```
+```{r}
+unique(depths_with_sub_simple)
+```
+
+```{r}
+# Make a dataframe for each of the depth zones
+zone0_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 0")
+
+zone2_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 2")
+
+zone3_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 3")
+
+zone4_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 4")
+
+zone5_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 5")
+
+zone6_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 6") 
+
+zone7_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 7")
+
+zone8_df <- depths_with_sub_simple |> 
+  filter(pmep_zone_detail == "Zone 8")
+```
+
+```{r}
+unique(zone8_df$cmecs_sc_name)
+```
+
+```{r}
+total_ha_zone0 <- sum(zone0_df$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Zone 0 in Ha: ", round(total_ha_zone0, 2)))
+
+# Calculate percentage of substrates per depth zone
+zone0_with_sub <- zone0_df |> 
+  group_by(cmecs_sc_name) |> 
+  summarize(persub_area_ha0 = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total0 = (persub_area_ha0 / total_ha_zone0) * 100)
+
+# Print formatted output
+zone0_with_sub |> 
+  arrange(cmecs_sc_name) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_name, 
+    ": ", 
+    round(persub_area_ha0, 2), " ha (", 
+    round(percent_of_total0, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+```
+
+```{r}
+# zone_areas_filtered <- zone_areas |> 
+#   filter(pmep_zone_detail %in% zones_to_plot) |> 
+#   mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
 
 
-
-
+ggplot(zone0_with_sub, aes(x = cmecs_sc_name, y = percent_of_total0)) +
+  geom_col(fill = "#796655") +
+  labs(
+    title = "Substrates represented in Depth Zone 0",
+    x = "PMEP Substrate Category",
+    y = "Percent of Total Area (%)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label = paste0(round(percent_of_total0, 1), "%")), 
+            vjust = -0.5, size = 3.5)
+```
 
 
 
