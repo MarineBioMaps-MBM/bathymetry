@@ -193,7 +193,32 @@ ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
             vjust = -0.5, size = 3.5)
 
 ```
-*Where is zone 1?? not in MPAs apparently...gonna look into that*
+
+```{r}
+# A minimal base to put into photoshop for styling
+zones_to_plot <- c("Zone 0", "Zone 1", "Zone 2", "Zone 4", "Zone 6")
+
+zone_areas_filtered <- zone_areas |> 
+  filter(pmep_zone_detail %in% zones_to_plot) |> 
+  mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
+
+
+ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
+  geom_col(fill = "#71D9B0") +
+  labs(
+    #title = "Selected PMEP Zones: Percent of Total MPA Area",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+
+```
+
+
+
+*Where is zone 1?? not in MPAs apparently...gonna look into that. There is probably some zone 1 outside of mpas- where is it at?*
 
 
 
