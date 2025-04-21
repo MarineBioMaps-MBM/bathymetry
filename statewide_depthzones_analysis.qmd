@@ -102,72 +102,98 @@ california_depths_simple <- bind_rows(north_sub_mpa_simple, central_sub_mpa_simp
 ```
 
 ```{r}
-unique(california_depths_simple$shortname)
+unique(california_depths_simple$pmep_zone_detail)
+```
+```{r}
+# Rename depth zone variables for searchability/ease
+california_depths_simple <- california_depths_simple |> 
+  mutate(pmep_zone_detail = case_when(
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
+    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
+    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
+  ))
+
+
+unique(california_depths_simple$pmep_zone_detail)
+```
+```{r}
+head(california_depths_simple)
 ```
 
-#### I am going to calculate the percentages of each MPA that are in each depth zone
+#### I am going to calculate the percentages of each MPA that are in each depth zone - using the area column
 
 ```{r}
+# Total area across all MPAs
+total_ha_all_mpas <- sum(california_depths_simple$area_ha, na.rm = TRUE)
 
-# Step 2: Make sure pmep_zone is treated as a factor (categorical)
-california_depths_simple$pmep_zone_detail <- as.factor(california_depths_simple$pmep_zone_detail)
+print(paste0("The total area of MPAs in Ha: ", round(total_ha_all_mpas, 2)))
 
-# Step 3: Calculate the percentages for each shortname and pmep_zone combination
-depth_zones_mpas <- california_depths_simple |>
-  # Group by shortname and pmep_zone to count occurrences
-  group_by(shortname, pmep_zone_detail) |>
-  summarise(count = n(), .groups = "drop") |>
-  
-  # Group by shortname to calculate total count for each shortname
-  group_by(shortname) %>%
-  mutate(percentage = count / sum(count) * 100) |>
-  
-  # Reshape data to have a column for each unique pmep_zone
-  select(-count) |>
-  pivot_wider(
-    names_from = pmep_zone_detail,
-    values_from = percentage) |>
-    #values_fill = 0)  |> # Fill NA values with 0
-  
-  # Rename columns to also reflect PMEP zone code
-  rename(
-    "Marine Protected Area" = "shortname",
-    "Zone 6" = "Deep Shelf or Sound (-100m to -200m), State Waters" ,
-    "Zone 8" = "Outside PMEP Scope (>-200m) or International Waters",
-    #"No Data" =  "NA",
-    "Zone 5" = "Seaward Zone (-30m to -100m), Federal",
-    "Zone 2" = "Core Zone (Shoreline to -30m), State Waters",
-    "Zone 0" = "Landward Zone",
-    "Zone 4" = "Seaward Zone (-30m to -100m), State Waters",
-    "Zone 7" = "Deep Shelf or Sound (-100m to -200m), Federal",
-    "Zone 3" = "Core Zone (Shoreline to -30m), Federal"
-  ) |>
-  # Put the columns in desired order
-  select(
-    "Marine Protected Area",
-    "Zone 0",
-    "Zone 2",
-    "Zone 3",
-    "Zone 4",
-    "Zone 5",
-    "Zone 6",
-    "Zone 7",
-    "Zone 8"
-  )
-  
+# Summarize total area by zone and calculate percentage
+zone_areas <- california_depths_simple |> 
+  group_by(pmep_zone_detail) |> 
+  summarize(total_area_ha = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total = (total_area_ha / total_ha_all_mpas) * 100)
+
+# Print formatted output
+zone_areas |> 
+  arrange(pmep_zone_detail) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    pmep_zone_detail, 
+    ": ", round(total_area_ha, 2), " ha (", 
+    round(percent_of_total, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
 ```
-
-# This does the same thing, but makes it a long table instead of wide
+*Note: The total area calculated is higher than the sum of the total added together zone areas, which total 34,766,903.27. This is a 369,000 hectare difference. I will try to figure out why, but am at the moment assuming that there are N/A values, or polygons that are not marked as being part of any zone.*
 
 ```{r}
-# Make a pivot longer table
-depth_zones_long <- depth_zones_mpas %>%
-  pivot_longer(
-    cols = -`Marine Protected Area`, 
-    names_to = "PMEP_Zone",
-    values_to = "Percentage"
-  )
+# Lets make a plot of this!
+zone_areas |> 
+  ggplot(aes(x = pmep_zone_detail, 
+             y = percent_of_total)) +
+  geom_col(fill = "#C4A9C2") +
+  labs(
+    title = "Percentage of Total MPA Area by PMEP Zone",
+    x = "PMEP Zone",
+    y = "Percent of Total Area (%)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label = paste0(round(percent_of_total, 1), "%")), 
+            vjust = -0.5, size = 3.5)
+
 ```
+
+```{r}
+zones_to_plot <- c("Zone 0", "Zone 1", "Zone 2", "Zone 4", "Zone 6")
+
+zone_areas_filtered <- zone_areas |> 
+  filter(pmep_zone_detail %in% zones_to_plot) |> 
+  mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
+
+
+ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
+  geom_col(fill = "#71D9B0") +
+  labs(
+    title = "Selected PMEP Zones: Percent of Total MPA Area",
+    x = "PMEP Zone",
+    y = "Percent of Total Area (%)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_text(aes(label = paste0(round(percent_of_total, 1), "%")), 
+            vjust = -0.5, size = 3.5)
+
+```
+*Where is zone 1?? not in MPAs apparently...gonna look into that*
 
 
 
