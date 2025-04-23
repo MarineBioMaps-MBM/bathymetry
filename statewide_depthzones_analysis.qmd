@@ -351,35 +351,91 @@ ggplot(zone0_with_sub, aes(x = cmecs_sc_category, y = percent_of_total0)) +
 
 
 
-```{r}
-# Lets try and add a biota layer to zone 0, to complete this thought experiment
-colnames(biota)
-```
-```{r}
-unique(biota$pmep_zone)
-```
+### Work on reading in biota to integrate into analysis
+
 **NOTE: There are no biota recorded in zone 0 in this dataset. This is a pretty big gap for this particular visualization, which has depth zones as it base. Could be worth figuring out why zone 0 is absent in this case**
 
+
+**Note about filtering below - I don't see an area_ha column, like there was in the substrate RDS. Check with Maddy about adding this to the rds?**
 ```{r}
-unique(biota$cmecs_bc_name)
+# To be assigned units, it must be projected!
+biota <- st_transform(biota, crs = 32610) # this will put the shape_area into m2?
 ```
 
+
 ```{r}
-unique(substrate$cmecs_sc_category)
+# Make a column in the biota dataframe for area in hectares 
+biota <- biota |> 
+  mutate(area_ha = shape_area / 10000)
 ```
-**Note about filtering below - I don't see an area_ha column, like there was in the substrate RDS. Check with Maddy?**
+
 
 ```{r}
 # Filter biota to just the categories we need for this viz
 depths_with_biota <- biota |> 
-  select("pmep_zone", "Shape", "pmep_region", "shape_area", "cmecs_bc_name", "cmecs_bc_category")
+  select("pmep_zone", "Shape", "pmep_region", "shape_area", "area_ha", "cmecs_bc_name", "cmecs_bc_category")
 
 depths_with_biota_simple <- biota |> 
-  select("pmep_zone", "Shape", "pmep_region", "shape_area", "cmecs_bc_name", "cmecs_bc_category") |> 
+  select("pmep_zone", "Shape", "pmep_region", "shape_area", "area_ha", "cmecs_bc_name", "cmecs_bc_category") |> 
   st_drop_geometry()
 
 unique(depths_with_biota$pmep_zone)
 ```
+```{r}
+# Make dataframes of biota and sub for each zone - KEEP GEO AND ONLY FOR ZONES WE CARE ABOUT
+
+subgeo_zone2_df <- depths_with_sub |> 
+  filter(pmep_zone_detail == "Zone 2")
+
+subgeo_zone4_df <- depths_with_sub |> 
+  filter(pmep_zone_detail == "Zone 4")
+
+subgeo_zone6_df <- depths_with_sub |> 
+  filter(pmep_zone_detail == "Zone 6") 
+
+biogeo_zone2_df <- depths_with_biota |> 
+  filter(pmep_zone == 2) |> 
+  st_transform(biogeo_zone2_df, crs = st_crs(depths_with_sub))
+
+biogeo_zone4_df <- depths_with_biota |> 
+  filter(pmep_zone == 4)|> 
+  st_transform(biogeo_zone4_df, crs = st_crs(depths_with_sub))
+
+biogeo_zone6_df <- depths_with_biota |> 
+  filter(pmep_zone == 6)|> 
+  st_transform(biogeo_zone6_df, crs = st_crs(depths_with_sub))
+
+```
+
+```{r}
+# Join dfs for zone 2, so we can know what biota overlaps with what substrate
+zone2_subbio_overlap <- st_intersection(biogeo_zone2_df, subgeo_zone2_df)
+```
+```{r}
+# Ok that worked but took forever. I think i want to filter both to region as well, and then run the join on each region, as well as zone. then, combine the data from the joins. 
+
+```
+
+```{r}
+# Now that the tables are joined, we have a df that is just the bio that overlaps with the sub...theoretically now can drop the geo, make little dfs of each sub type, and then calculate what biotas take up what percentages of that sub
+
+colnames(zone2_subbio_overlap)
+```
+```{r}
+head(zone2_subbio_overlap)
+```
+
+
+
+**Seems like theres something wrong here...with what numbers are in the different area columns. Need to troubleshoot...**
+
+
+
+
+
+
+
+
 
 
 
