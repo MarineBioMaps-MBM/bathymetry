@@ -41,7 +41,7 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 # Clean and transform MPA boundaries data
 mpas <- mpa_boundaries |> 
   clean_names() |> 
-  select("type", "shortname", "geometry") |> 
+#  select("type", "shortname", "geometry") |> 
   st_transform(mpas, crs = st_crs(substrate)) |> 
   st_make_valid()
 
@@ -49,6 +49,63 @@ mpas <- mpa_boundaries |>
 depth_zones_sub_filtered <- substrate |>
   select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
+
+# Rather than filtering by PMEP region, lets try and filter by North, Central, and Southern CA
+```{r}
+colnames(mpas)
+```
+```{r}
+unique(mpas$study_regi)
+```
+
+## Definitions: 
+
+*SCSR* = South Coast Study Region
+*NCCSR* = North Central Coast Study Region
+*CCSR* = Central Coast Study Region
+*NCSR* = North Coast Study Region
+*SFBSR* = San Francisco Bay Study Region
+
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+
+# Factorize study regions
+unique_regions <- c("NCSR", "NCCSR", "SFBSR", "CCSR", "SCSR")
+mpas$study_regi <- factor(mpas$study_regi, levels = unique_regions)
+
+# Define custom color palette
+custom_colors <- c("#C4A9C2", "#71D9B0", "#D8C397", "#6EA1C8", "#796655")
+pal <- colorFactor(palette = custom_colors, domain = unique_regions)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = mpas,
+              color = ~pal(study_regi), # Assign colors based on study_region
+              weight = 3,
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = mpas$study_regi,
+            title = "MPA Study Region")
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 # Filter to North
