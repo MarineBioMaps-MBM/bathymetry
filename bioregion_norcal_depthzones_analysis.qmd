@@ -7,7 +7,7 @@ editor: source
 
 ```{r}
 # load libraries
-librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext, leaflet)
+librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext, leaflet, here)
 ```
 
 ## Here is what the PMEP depth zones stand for, according to the metadata:
@@ -29,9 +29,11 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 
 ```{r}
 # Read in substrate and biotic data...commented out because I chose to load the RDS files directly into the environment - uncomment to render
-# substrate <- readRDS(here("data", "substrate.rds"))
-# biota <- readRDS(here("data", "biota.rds")) |>
-#   clean_names()
+rds.dir <- "/capstone/marinebiomaps/data/rds-files/"
+substrate <- sf::st_read(file.path(rds.dir, "substrate.rds"))
+
+biota <- readRDS(here("data", "biota.rds")) |> 
+  st_transform(biota, crs = 4326)
 
 
 # Read in MPA boundaries data
@@ -42,7 +44,7 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 mpas <- mpa_boundaries |> 
   clean_names() |> 
 #  select("type", "shortname", "geometry") |> 
-  st_transform(mpas, crs = st_crs(substrate)) |> 
+  st_transform(mpas, crs = 4326) |> 
   st_make_valid()
 
 # Filter the substrate data to just the variables I'm interested in - KEEP GEO
@@ -94,17 +96,6 @@ leaflet() |>
             values = mpas$study_regi,
             title = "MPA Study Region")
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 ```{r}

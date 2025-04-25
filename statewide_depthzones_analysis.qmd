@@ -39,7 +39,7 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 # Clean and transform MPA boundaries data
 mpas <- mpa_boundaries |> 
   clean_names() |> 
-  select("type", "shortname", "geometry") |> 
+ # select("type", "shortname", "geometry") |> 
   st_transform(mpas, crs = st_crs(substrate)) |> 
   st_make_valid()
 
@@ -55,6 +55,9 @@ depth_zones_sub_filtered <- substrate |>
 #### BUT i can do it in 3s, remove the geometry, and then join the three simple dfs to run analysis, without doing too much comp. NO NEED to make a big statewide map..............at least not yet
 
 ## BUT FIRST IM GOING TO HAVE TO BREAK THIS DOWN INTO SMALLER CATEGORIES because there are some invalid polygons preventing analysis, and st_make_valid was not gonna run on a file this size.
+
+
+
 
 ```{r}
 # Filter to North
@@ -83,6 +86,47 @@ south_sub_mpa <- st_intersection(mpas, south_sub)
 ```
 
 ## All of the mpas and substrates were able to be combined in the separate regions....SO THE INVALID POLYGONS ARE PROBABLY IN THE REGION OVERLAP
+
+## LETS TURN IT INTO F&W Boundaries instead!!!!!!
+```{r}
+# Ok, now i need to combine them by F&W boundaries, instead of PMEP Boundaries!
+
+unique(north_sub_mpa$study_regi)
+```
+```{r}
+unique(central_sub_mpa$study_regi)
+```
+
+```{r}
+unique(south_sub_mpa$study_regi)
+```
+
+```{r}
+ncsr_substrate_central_filtered <- central_sub_mpa |> 
+  filter(study_regi == "NCSR") 
+```
+
+
+```{r}
+ncsr_substrate <- bind_rows(north_sub_mpa, ncsr_substrate_central_filtered)
+```
+
+```{r}
+unique(ncsr_substrate$study_regi)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 # Make NON GEO dfs for each region
