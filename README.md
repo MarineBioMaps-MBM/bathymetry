@@ -6,11 +6,15 @@ This repository houses the analysis conducted by Bailey Jørgensen to analyze ba
 
 This is a statewide and regional analysis, with summary statistics and mapping being conducted statewide, and also on a regional level. For the regional analysis, we utilized the 5 distinct regions defined by the California Department of Fish and Wildlife and the Marine Life Protection Act. They are definited as such:
 
-*SCSR* = South Coast Study Region
-*NCCSR* = North Central Coast Study Region
-*CCSR* = Central Coast Study Region
-*NCSR* = North Coast Study Region
-*SFBSR* = San Francisco Bay Study Region
+**SCSR** = South Coast Study Region
+
+**NCCSR** = North Central Coast Study Region
+
+**CCSR** = Central Coast Study Region
+
+**NCSR** = North Coast Study Region
+
+**SFBSR** = San Francisco Bay Study Region
 
 So far, the primary method of bathymetry and depth zone analysis is utilizing the depth zone categories integrated into the  [Pacific Marine and Estuarine Partnership (PMEP)](https://www.pacificfishhabitat.org/data/nearshore-cmecs-substrate-habitat/) data. These depth zones categories are a key component of both the biotic and substrate datasets, and within them the depthzones are defined as such:
 
