@@ -1,10 +1,10 @@
 # Bathymetry and Depth Zones Analysis
 ## Author: Bailey Jørgensen
-### Contributors: Madison Enda, Michelle Yiv
+### Contributors: Madison Enda, Michelle Yiv, Cori Lopazanski, Samantha Stevenson Karl
 
 This repository houses the analysis conducted by Bailey Jørgensen to analyze bathymetry and depth zone distribution in California MPAs, as part of the MarineBioMaps Capstone Project. 
 
- Here is what the [Pacific Marine and Estuarine Partnership (PMEP)](https://www.pacificfishhabitat.org/data/nearshore-cmecs-substrate-habitat/) defines depth zones, according to the metadata:
+Here is what the [Pacific Marine and Estuarine Partnership (PMEP)](https://www.pacificfishhabitat.org/data/nearshore-cmecs-substrate-habitat/) defines depth zones, according to the metadata:
 
 - Value 0: Landward Zone
 - Value 1: Core Zone (Estuary Overlap)
@@ -26,5 +26,26 @@ The code found in this repository may reference these PMEP depth zones.
 
 [Pacific Marine and Estuarine Partnership (PMEP) CMECS Nearshore Substrate Data](https://www.pacificfishhabitat.org/data/nearshore-cmecs-substrate-habitat/)
 
+## File Contents
+
+The Quarto Markdown files in this repository house the various analysis run to answer questions about MPA habitat components on a statewide, regional, or MPA specific level. The .qmd files are named for the respective areas being analyzed. 
+
+## Repository Structure
+```bash
+├── biota_rds_files
+│   ├── ccsr_biota.R
+│   ├── nccsr_biota.R
+│   ├── ncsr_biota.R
+│   └── scsr_biota.R
+├── substrate_rds_files
+│   ├── ccsr_substrate.R
+│   ├── nccsr_substrate.R
+│   ├── ncsr_substrate.R
+│   └── scsr_substrate.R
+├── .gitignore
+├── foundational_rds_file.R
+├── rds_outputs
+└── README.md
+```
 
 
