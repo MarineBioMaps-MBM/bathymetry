@@ -32,19 +32,12 @@ The Quarto Markdown files in this repository house the various analysis run to a
 
 ## Repository Structure
 ```bash
-├── biota_rds_files
-│   ├── ccsr_biota.R
-│   ├── nccsr_biota.R
-│   ├── ncsr_biota.R
-│   └── scsr_biota.R
-├── substrate_rds_files
-│   ├── ccsr_substrate.R
-│   ├── nccsr_substrate.R
-│   ├── ncsr_substrate.R
-│   └── scsr_substrate.R
+├── ccsr_depthzones_analysis.qmd
+├── nccsr_depthzones_analysis.qmd
+├── ncsr_depthzones_analysis.qmd
+├── scsr_depthzones_analysis.qmd
+├── sfbsr_depthzones_analysis.qmd
 ├── .gitignore
-├── foundational_rds_file.R
-├── rds_outputs
 └── README.md
 ```
 
