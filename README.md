@@ -1,8 +1,10 @@
 # Bathymetry and Depth Zones Analysis
+## Author: Bailey Jørgensen
+### Contributors: Madison Enda, Michelle Yiv
 
-## Analysis conducted by Bailey Jørgensen to analyze bathymetry and depth zone distribution in California MPAs, as part of the MarineBioMaps Capstone Project. 
+This repository houses the analysis conducted by Bailey Jørgensen to analyze bathymetry and depth zone distribution in California MPAs, as part of the MarineBioMaps Capstone Project. 
 
- Here is what the Pacific Marine and Estuarine Partnership (PMEP) defines depth zones, according to the metadata:
+ Here is what the [Pacific Marine and Estuarine Partnership (PMEP)](https://www.pacificfishhabitat.org/data/nearshore-cmecs-substrate-habitat/) defines depth zones, according to the metadata:
 
 - Value 0: Landward Zone
 - Value 1: Core Zone (Estuary Overlap)
@@ -14,8 +16,15 @@
 - Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
 - Value 8: Outside PMEP Score (>-300m) or International Waters
 
-### Data:
+The code found in this repository may reference these PMEP depth zones.
 
-.rds files created in the Biota and Substrate repositories from this MarineBioMaps Github Organization were used to load in the PMEP data filtered to California. See those repositories to access these .rds files. 
+## Data Used:
 
-Shapefiles for CA MPA Boundaries were downloaded from the [California Department of Fish and Wildlife](https://data.ca.gov/dataset/california-marine-protected-areas-ds582).
+.rds files used throughout this repository were created in the rds_creation repository from this MarineBioMaps Github Organization. These files were used to load in the PMEP data filtered to California and California MPA study regions. See the rds_creation repository to view more details or recreate these .rds files. 
+
+[California Department of Fish and Wildlife MPA Boundaries Shapefile](https://data.ca.gov/dataset/california-marine-protected-areas-ds582)
+
+[Pacific Marine and Estuarine Partnership (PMEP) CMECS Nearshore Substrate Data](https://www.pacificfishhabitat.org/data/nearshore-cmecs-substrate-habitat/)
+
+
+
