@@ -37,8 +37,7 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 # Clean and transform MPA boundaries data
 mpas <- mpa_boundaries |> 
   clean_names() |> 
-#  select("type", "shortname", "geometry") |> 
-  st_transform(mpas, crs = 4326) |> 
+  st_transform(mpas, crs = st_crs(ncsr_substrate)) |> 
   st_make_valid()
 ```
 
