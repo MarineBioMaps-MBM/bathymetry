@@ -4,3 +4,44 @@ author: "Bailey Jørgensen"
 format: html
 editor: source
 ---
+
+```{r}
+# load libraries
+librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, leaflet, here)
+```
+
+## Here is what the PMEP depth zones stand for, according to the metadata:
+
+### NOTE: The substrate data records the whole name, rather than using the # code
+
+-   Value 0: Landward Zone
+-   Value 1: Core Zone (Estuary Overlap)
+-   Value 2: Core Zone (Shoreline to -30m), State Waters
+-   Value 3: Core Zone (Shoreline to -30m), Federal Waters
+-   Value 4: Seaward Zone (-30m to -100m), State Waters
+-   Value 5: Seaward Zone (-30m to -100m), Federal Waters
+-   Value 6: Deep Shelf or Channel (-100m to -200m), State Waters
+-   Value 7: Deep Shelf or Channel (-100m to -200m), Federal WatersLN
+-   Value 8: Outside PMEP Score (>-300m) or International Waters
+
+## For the purposes of the PMEP depth zone analysis (when determining overall coverage), I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota.
+
+## Read in substrate, biota and MPA data
+
+```{r}
+# Read in substrate and biotic data
+rds.dir <- "/capstone/marinebiomaps/data/rds-files"
+nccsr_substrate <- readRDS(file.path(rds.dir, "nccsr_substrate.rds"))
+nccsr_biota <- readRDS(file.path(rds.dir, "nccsr_biota.rds"))
+
+# Read in MPA boundaries data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+# Clean and transform MPA boundaries data
+mpas <- mpa_boundaries |> 
+  clean_names() |> 
+  st_transform(mpas, crs = st_crs(nccsr_substrate)) |> 
+  st_make_valid()
+
+```
