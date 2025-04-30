@@ -1,5 +1,5 @@
 ---
-title: "Bioregion: Northern California Depth Zones Analysis"
+title: "North Coast Study Region Depth Zones Analysis"
 author: "Bailey Jørgensen"
 format: html
 editor: source
@@ -23,7 +23,7 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 - Value 7: Deep Shelf or Channel (-100m to -200m), Federal Waters
 - Value 8: Outside PMEP Score (>-300m) or International Waters
 
-## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota. 
+## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be near 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota. 
 
 ## Read in substrate, biota and MPA data
 
@@ -31,10 +31,6 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 # Read in substrate and biotic data...commented out because I chose to load the RDS files directly into the environment - uncomment to render
 rds.dir <- "/capstone/marinebiomaps/data/rds-files/"
 substrate <- sf::st_read(file.path(rds.dir, "substrate.rds"))
-
-biota <- readRDS(here("data", "biota.rds")) |> 
-  st_transform(biota, crs = 4326)
-
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
@@ -51,15 +47,6 @@ mpas <- mpa_boundaries |>
 depth_zones_sub_filtered <- substrate |>
   select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
-
-# Rather than filtering by PMEP region, lets try and filter by North, Central, and Southern CA
-```{r}
-colnames(mpas)
-```
-```{r}
-unique(mpas$study_regi)
-```
-
 ## Definitions: 
 
 *SCSR* = South Coast Study Region
@@ -96,60 +83,3 @@ leaflet() |>
             values = mpas$study_regi,
             title = "MPA Study Region")
 ```
-
-
-```{r}
-# Filter to North
-north_sub <- depth_zones_sub_filtered |>
-  filter(pmep_region == "Pacific Northwest")
-
-# All norcal MPAs with the substrate data within them
-north_sub_mpa <- st_intersection(mpas, north_sub)
-
-# Simple, no geo
-north_sub_mpa_simple <- north_sub_mpa |> 
-  st_drop_geometry()
-```
-
-```{r}
-north_sub_mpa$shortname
-```
-Well, fuck, realizing that there is some name repeating here, and not all of the MPAs I expect are here...why might that be?
-
-Make a basic Leaflet map of just the Norcal MPAs...to not include the substrate data, I will have to do some filtering, so I can use just the MPA data, but with the NorCal MPAS included in the PMEP Norcal Bioregion
-
-```{r}
-# Filter MPAs data to just these ones - ADD MORE THAT ARE NORCAL MPAS - FIGURE OUT WHATS WRONG WITH PMEP DATA FILTERING
-shortname_list <- c(
-  "Pyramid Point",
-  "Southwest Seal Rock",
-  "Castle Rock",
-  "False Klamath Rock",
-  "Reading Rock",
-  "Samoa",
-  "Point St. George Reef Offshore"
-)
-
-mpas_norcal <- mpas |> 
-  filter(shortname %in% shortname_list)
-  
-
-# Transform CRS for this map, since leaflet requires WGS84
-mpas <- st_transform(mpas, crs = 4326)
-
-# Map
-leaflet() |>
-  addProviderTiles(providers$CartoDB.Positron) |>
-  setView(lng = -119.6989,
-          lat = 34.4203,
-          zoom = 8) |>
-  addMiniMap(toggleDisplay = TRUE,
-             minimized = FALSE) |>
-  addPolygons(data = mpas,
-              color = "#09EEC8",
-              weight = 3,
-              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
-                            "MPA Type:  ", mpas$type))
-
-```
-

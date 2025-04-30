@@ -1,7 +1,8 @@
 ---
-title: "Point Lobos Depth Zones Analysis"
+title: "Central Coast Study Region Depth Zones Analysis"
 author: "Bailey Jørgensen"
 format: html
+editor: source
 ---
 
 ```{r}

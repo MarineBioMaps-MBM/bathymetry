@@ -1,6 +1,6 @@
 # Bathymetry and Depth Zones Analysis
 ## Author: Bailey Jørgensen
-### Contributors: Madison Enda, Michelle Yiv, Cori Lopazanski, Samantha Stevenson Karl
+### Contributors: Madison Enda, Michelle Yiv, Cori Lopazanski, Samantha Stevenson-Karl
 
 This repository houses the analysis conducted by Bailey Jørgensen to analyze bathymetry and depth zone distribution in California MPAs, as part of the MarineBioMaps Capstone Project. 
 
