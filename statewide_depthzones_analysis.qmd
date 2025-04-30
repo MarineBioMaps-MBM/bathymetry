@@ -341,27 +341,35 @@ head(zone2_subbio_overlap)
 
 
 
-
-# More Visuals for Report: 
+# Make a map of the mpas colored by study region
 
 ```{r}
-# Leaflet requrires a CRS of WGS84
-mpa_boundaries_WGS84 <- mpa_boundaries |> 
-  sf::st_transform('+proj=latlong +datum=WGS84')
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
 
-# Lets just make a map of all of the CA MPAs
-leaflet() |>
-  addProviderTiles(providers$CartoDB.Positron) |>
-  setView(lng = -119.6989,
-          lat = 34.4203,
-          zoom = 8) |>
-  addMiniMap(toggleDisplay = TRUE,
-             minimized = FALSE) |>
-  addPolygons(data = mpa_boundaries_WGS84,
-              color = "darkgoldenrod",
+# Factorize study regions
+unique_regions <- c("NCSR", "NCCSR", "SFBSR", "CCSR", "SCSR")
+mpas$study_regi <- factor(mpas$study_regi, levels = unique_regions)
+
+# Define custom color palette
+custom_colors <- c("#C4A9C2", "#71D9B0", "#D8C397", "#6EA1C8", "#796655")
+pal <- colorFactor(palette = custom_colors, domain = unique_regions)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = mpas,
+              color = ~pal(study_regi), # Assign colors based on study_region
               weight = 3,
-              popup = paste0("MPA Name:  ", mpa_boundaries_WGS84$FULLNAME, "<br>",
-                             "Total Square Miles:  ", mpa_boundaries_WGS84$Area_sq_mi))
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = mpas$study_regi,
+            title = "MPA Study Region")
 ```
 
 

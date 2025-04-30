@@ -29,11 +29,9 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 ## Read in substrate, biota and MPA data
 
 ```{r}
-# Read in substrate and biotic data...commented out because I chose to load the RDS files directly into the environment - uncomment to render
-# substrate <- readRDS(here("data", "substrate.rds"))
-# biota <- readRDS(here("data", "biota.rds")) |>
-#   clean_names()
-
+# Read in sub data
+rds.dir <- "/capstone/marinebiomaps/data/rds-files"
+scsr_substrate <- readRDS(file.path(rds.dir, "scsr_substrate.rds"))
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
@@ -43,49 +41,34 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 mpas <- mpa_boundaries |> 
   clean_names() |> 
   select("type", "shortname", "geometry") |> 
-  st_transform(mpas, crs = st_crs(substrate)) |> 
+  st_transform(mpas, crs = st_crs(scsr_substrate)) |> 
   st_make_valid()
 
-# Filter the substrate data to just the variables I'm interested in - KEEP GEO
-# Filter the substrate data to just the variables I'm interested in - KEEP GEO
-depth_zones_sub_filtered <- substrate |>
-  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
 
-```{r}
-# Create variables for SoCal analysis (these were calculated in the Statewide analysis QMD)
-south_sub <- depth_zones_sub_filtered |>
-  filter(pmep_region == "Southern California Bight")
-
-south_sub_mpa <- st_intersection(mpas, south_sub)
-
-south_sub_mpa_simple <- south_sub_mpa |> 
-  st_drop_geometry()
-```
 
 # AND A LOOK AT THE CHANNEL ISLANDS
 
 ```{r}
-# List all MPAs in southern CA...ideally
-unique(south_sub_mpa$shortname)
+# List all MPAs in southern CA
+unique(scsr_substrate$shortname)
 ```
 
 ```{r}
-tm_shape(south_sub_mpa) +
+tm_shape(scsr_substrate) +
   tm_polygons() 
 ```
 
-Hmmm... this is definitely not plotting all of the mpas...why might that be???
 
 ```{r}
 # Transform CRS for this map, since leaflet requires WGS84
-south_sub_mpa <- st_transform(south_sub_mpa, crs = 4326)
+scsr_substrate <- st_transform(scsr_substrate, crs = 4326)
 
 # Create a color palette for the `pmep_zone_detail` variable
 color_palette <- colorFactor(
   palette = c('#C4A9C2', '#CEB6AD', '#D8C397', '#A5CEA4', '#71D9B0', 
               '#09EEC8', '#22CFA7', '#3BAF85', '#6EA1C8', '#3C7BB7', '#796655'),
-  domain = south_sub_mpa$pmep_zone_detail
+  domain = scsr_substrate$pmep_zone_detail
 )
 
 # Generate the Leaflet map
@@ -99,9 +82,9 @@ leaflet() |>
   addPolygons(data = south_sub_mpa,
               color = ~color_palette(pmep_zone_detail), # Apply the color palette
               weight = 3,
-              popup = paste0("MPA Name:  ", south_sub_mpa$shortname, "<br>",
-                            "MPA Type:  ", south_sub_mpa$type, "<br>",
-                            "PMEP Zone Detail:  ", south_sub_mpa$pmep_zone_detail))
+              popup = paste0("MPA Name:  ", scsr_substrate$shortname, "<br>",
+                            "MPA Type:  ", scsr_substrate$type, "<br>",
+                            "PMEP Zone Detail:  ", scsr_substrate$pmep_zone_detail))
 ```
 
 Looking at the leaflet above im noticing some unexpected missing mpas... is it the substrate data?
@@ -128,7 +111,7 @@ leaflet() |>
 OK, theres definitely MPAs there... lets look at the substrate data and see if any data looks like its missing, or maybe there just isnt substate data for those areas?
 
 ```{r}
-harris_point_sub <- south_sub_mpa |> 
+harris_point_sub <- scsr_substrate |> 
   filter(shortname == "Harris Point") 
 
 tm_shape(harris_point_sub) +
@@ -161,34 +144,5 @@ channel_islands_bbox <- st_as_sfc(st_bbox(c(
 
 # Visualize the bounding box (optional)
 plot(channel_islands_bbox, col = "goldenrod")
-
-# Transform the CRS of south_sub to match the bounding box
-south_sub_wgs84 <- st_transform(south_sub, st_crs(channel_islands_bbox))
-
-# Verify the transformation
-st_crs(south_sub_wgs84) == st_crs(channel_islands_bbox)
 ```
 
-```{r}
-# Getting errors about polygon validity...
-south_sub_valid <- st_make_valid(south_sub_transformed)
-
-# Filter the data to include only features within the bounding box
-allsub_sbcounty <- st_intersection(south_sub_transformed, channel_islands_bbox)
-
-# Verify the filtered data
-plot(allsub_sbcounty)
-```
-
-```{r}
-overlap_check <- st_intersects(south_sub_transformed, channel_islands_bbox, sparse = FALSE)
-any(overlap_check)
-```
-
-```{r}
-plot(sb_bbox)
-```
-
-```{r}
-summary(south_sub)
-```
