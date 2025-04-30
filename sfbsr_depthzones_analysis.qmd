@@ -4,3 +4,5 @@ author: "Bailey Jørgensen"
 format: html
 editor: source
 ---
+
+**NOTE: There is no biotic or substrate data from the PMEP CMECS datasets for the SFBSR. This will likely change once estuary data is integrated into the biota dataset, since most of the SFBSR is within a landward zone. Stay tuned for more SFBSR analysis as more data is integrated into the study**
