@@ -6,7 +6,7 @@ format: html
 
 ```{r}
 # load libraries
-librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtext, leaflet, here)
+librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, leaflet, here)
 ```
 
 ## Here is what the PMEP depth zones stand for, according to the metadata:
@@ -23,14 +23,16 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, gt, ggtex
 -   Value 7: Deep Shelf or Channel (-100m to -200m), Federal WatersLN
 -   Value 8: Outside PMEP Score (>-300m) or International Waters
 
-## For the purposes of the PMEP depth zone analysis, I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota.
+## For the purposes of the PMEP depth zone analysis (when determining overall coverage), I have decided to use the PMEP Zones that are recorded in the substrate data, rather than the biotic data. This is because it is expected for there to be 100% MPA coverage of the different substrate types, where as the biotic data may not contain whole coverage of MPA, given the nature of biota.
 
 ## Read in substrate, biota and MPA data
 
 ```{r}
-# Read in substrate and biotic data ... Commented out, because I chose to load the RDS files into my environment prior to this
-substrate <- readRDS(here("data", "substrate.rds"))
-biota <- readRDS(here("data", "biota.rds")) 
+# Read in substrate and biotic data
+rds.dir <- "/capstone/marinebiomaps/data/rds-files"
+substrate_in_mpas <- readRDS(file.path(rds.dir, "substrate_in_mpas.rds"))
+biota_in_mpas <- readRDS(file.path(rds.dir, "biota_in_mpas.rds"))
+substrate_outside_mpas <- readRDS(file.path(rds.dir, "substrate_outside_mpas.rds"))
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
@@ -39,118 +41,27 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 # Clean and transform MPA boundaries data
 mpas <- mpa_boundaries |> 
   clean_names() |> 
- # select("type", "shortname", "geometry") |> 
   st_transform(mpas, crs = st_crs(substrate)) |> 
   st_make_valid()
 
-# Filter the substrate data to just the variables I'm interested in - KEEP GEO
-depth_zones_sub_filtered <- substrate |>
-  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area")
 ```
 
-## OK HERE... I AM TRYING TO COMBINE THE DATA SO THAT I CAN DO FULL MPA ANALYSIS...
-
-### I can run stats on the data after removing the geometry column.......but first i have to join the geospatial data together to get the mpas overlain with the sub....
-
-#### BUT i can do it in 3s, remove the geometry, and then join the three simple dfs to run analysis, without doing too much comp. NO NEED to make a big statewide map..............at least not yet
-
-## BUT FIRST IM GOING TO HAVE TO BREAK THIS DOWN INTO SMALLER CATEGORIES because there are some invalid polygons preventing analysis, and st_make_valid was not gonna run on a file this size.
-
-
-
+## In the substrate.rds and biota.rds files, we already have the area of each polygon calculated and stored in a column. So, for much of the statewide analysis, it is ok to use the data with the geometry column dropped!
 
 ```{r}
-# Filter to North
-north_sub <- depth_zones_sub_filtered |>
-  filter(pmep_region == "Pacific Northwest")
-
-# Filter to Central
-central_sub <- depth_zones_sub_filtered |>
-  filter(pmep_region == "Central California")
-
-# Filter to Southern
-south_sub <- depth_zones_sub_filtered |>
-  filter(pmep_region == "Southern California Bight")
-```
-
-```{r}
-north_sub_mpa <- st_intersection(mpas, north_sub)
-```
-
-```{r}
-central_sub_mpa <- st_intersection(mpas, central_sub)
-```
-
-```{r}
-south_sub_mpa <- st_intersection(mpas, south_sub)
-```
-
-## All of the mpas and substrates were able to be combined in the separate regions....SO THE INVALID POLYGONS ARE PROBABLY IN THE REGION OVERLAP
-
-## LETS TURN IT INTO F&W Boundaries instead!!!!!!
-```{r}
-# Ok, now i need to combine them by F&W boundaries, instead of PMEP Boundaries!
-
-unique(north_sub_mpa$study_regi)
-```
-```{r}
-unique(central_sub_mpa$study_regi)
-```
-
-```{r}
-unique(south_sub_mpa$study_regi)
-```
-
-```{r}
-ncsr_substrate_central_filtered <- central_sub_mpa |> 
-  filter(study_regi == "NCSR") 
+# Drop the geometry of the substrate column. 
+substrate_in_mpas_simple <- substrate_in_mpas |> 
+  st_drop_geometry() 
 ```
 
 
 ```{r}
-ncsr_substrate <- bind_rows(north_sub_mpa, ncsr_substrate_central_filtered)
-```
-
-```{r}
-unique(ncsr_substrate$study_regi)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-# Make NON GEO dfs for each region
-north_sub_mpa_simple <- north_sub_mpa |> 
-  st_drop_geometry()
-
-central_sub_mpa_simple <- central_sub_mpa |> 
-  st_drop_geometry()
-
-south_sub_mpa_simple <- south_sub_mpa |> 
-  st_drop_geometry()
-```
-
-```{r}
-# COMBINE the simple dfs into one big simple df for all of CA depth zones!!!!!!!
-california_depths_simple <- bind_rows(north_sub_mpa_simple, central_sub_mpa_simple, south_sub_mpa_simple)
-```
-
-```{r}
-unique(california_depths_simple$pmep_zone_detail)
+# Take a look at all the PMEP depth zones to verify
+unique(substrate_in_mpas_simple$pmep_zone_detail)
 ```
 ```{r}
-# Rename depth zone variables for searchability/ease
-california_depths_simple <- california_depths_simple |> 
+# Rename depth zone variables for searchability/ease - I will bring back more technical names for viz
+substrate_in_mpas_simple <- substrate_in_mpas_simple |> 
   mutate(pmep_zone_detail = case_when(
     pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
     pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
@@ -163,25 +74,23 @@ california_depths_simple <- california_depths_simple |>
   ))
 
 
-unique(california_depths_simple$pmep_zone_detail)
+unique(substrate_in_mpas_simple$pmep_zone_detail)
 ```
-```{r}
-head(california_depths_simple)
-```
+
 
 #### I am going to calculate the percentages of each MPA that are in each depth zone - using the area column
 
 ```{r}
 # Total area across all MPAs
-total_ha_all_mpas <- sum(california_depths_simple$area_ha, na.rm = TRUE)
+total_ha_all_mpas <- sum(substrate_in_mpas_simple$area_ha, na.rm = TRUE)
 
-print(paste0("The total area of MPAs in Ha: ", round(total_ha_all_mpas, 2)))
+print(paste0("The total area of Substrate data within California MPAs in Ha: ", round(total_ha_all_mpas, 2)))
 
 # Summarize total area by zone and calculate percentage
-zone_areas <- california_depths_simple |> 
+zone_areas <- substrate_in_mpas_simple |> 
   group_by(pmep_zone_detail) |> 
-  summarize(total_area_ha = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
-  mutate(percent_of_total = (total_area_ha / total_ha_all_mpas) * 100)
+  summarize(total_area_per_zone = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total = (total_area_per_zone / total_ha_all_mpas) * 100)
 
 # Print formatted output
 zone_areas |> 
@@ -189,7 +98,7 @@ zone_areas |>
   rowwise() |> 
   mutate(print_statement = paste0(
     pmep_zone_detail, 
-    ": ", round(total_area_ha, 2), " ha (", 
+    ": ", round(total_area_per_zone, 2), " ha (", 
     round(percent_of_total, 2), "% of total)"
   )) |> 
   pull(print_statement) |> 
@@ -259,76 +168,42 @@ ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
         axis.text.y = element_blank())
 
 ```
-*Where is zone 1?? not in MPAs apparently...gonna look into that. There is probably some zone 1 outside of mpas- where is it at?*
-
-```{r}
-colnames(substrate)
-```
-
+*Where is zone 1?? not in MPAs apparently...gonna look into that. There is probably some zone 1 outside of mpas- where is it at? Estuaries data, perhaps?*
 
 
 
 
 # STATEWIDE COMPARATIVE ANALYSIS.
 
-```{r}
-depths_with_sub <- substrate |> 
-  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name", "cmecs_sc_category") |> 
-  mutate(pmep_zone_detail = case_when(
-    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
-    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
-    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
-    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
-    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
-    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
-    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
-    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
-  ))
 
-depths_with_sub_simple <- substrate |> 
-  select("pmep_zone_detail", "Shape", "pmep_region", "area_ha", "shape_area", "cmecs_sc_name", "cmecs_sc_category") |> 
-  mutate(pmep_zone_detail = case_when(
-    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
-    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
-    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
-    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
-    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
-    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
-    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
-    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
-  )) |> 
-  st_drop_geometry()
-
-unique(depths_with_sub$pmep_zone_detail)
-```
 ```{r}
-unique(depths_with_sub_simple)
+unique(substrate_in_mpas_simple)
 ```
 
 ```{r}
 # Make a dataframe for each of the depth zones
-zone0_df <- depths_with_sub_simple |> 
+zone0_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 0")
 
-zone2_df <- depths_with_sub_simple |> 
+zone2_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 2")
 
-zone3_df <- depths_with_sub_simple |> 
+zone3_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 3")
 
-zone4_df <- depths_with_sub_simple |> 
+zone4_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 4")
 
-zone5_df <- depths_with_sub_simple |> 
+zone5_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 5")
 
-zone6_df <- depths_with_sub_simple |> 
+zone6_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 6") 
 
-zone7_df <- depths_with_sub_simple |> 
+zone7_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 7")
 
-zone8_df <- depths_with_sub_simple |> 
+zone8_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 8")
 ```
 
@@ -400,31 +275,14 @@ ggplot(zone0_with_sub, aes(x = cmecs_sc_category, y = percent_of_total0)) +
 **NOTE: There are no biota recorded in zone 0 in this dataset. This is a pretty big gap for this particular visualization, which has depth zones as it base. Could be worth figuring out why zone 0 is absent in this case**
 
 
-**Note about filtering below - I don't see an area_ha column, like there was in the substrate RDS. Check with Maddy about adding this to the rds?**
 ```{r}
-# To be assigned units, it must be projected!
-biota <- st_transform(biota, crs = 32610) # this will put the shape_area into m2?
-```
-
-
-```{r}
-# Make a column in the biota dataframe for area in hectares 
-biota <- biota |> 
-  mutate(area_ha = shape_area / 10000)
-```
-
-
-```{r}
-# Filter biota to just the categories we need for this viz
-depths_with_biota <- biota |> 
-  select("pmep_zone", "Shape", "pmep_region", "shape_area", "area_ha", "cmecs_bc_name", "cmecs_bc_category")
-
-depths_with_biota_simple <- biota |> 
-  select("pmep_zone", "Shape", "pmep_region", "shape_area", "area_ha", "cmecs_bc_name", "cmecs_bc_category") |> 
+# Make a non geo biota df
+biota_in_mpas_simple <- biota_in_mpas |> 
   st_drop_geometry()
-
-unique(depths_with_biota$pmep_zone)
 ```
+
+
+**This chunk below is still a major work in progres...don't look too close, also variable names are currently wrong**
 ```{r}
 # Make dataframes of biota and sub for each zone - KEEP GEO AND ONLY FOR ZONES WE CARE ABOUT
 
@@ -455,6 +313,7 @@ biogeo_zone6_df <- depths_with_biota |>
 # Join dfs for zone 2, so we can know what biota overlaps with what substrate
 zone2_subbio_overlap <- st_intersection(biogeo_zone2_df, subgeo_zone2_df)
 ```
+
 ```{r}
 # Ok that worked but took forever. I think i want to filter both to region as well, and then run the join on each region, as well as zone. then, combine the data from the joins. 
 
@@ -465,13 +324,12 @@ zone2_subbio_overlap <- st_intersection(biogeo_zone2_df, subgeo_zone2_df)
 
 colnames(zone2_subbio_overlap)
 ```
+
 ```{r}
 head(zone2_subbio_overlap)
 ```
 
 
-
-**Seems like theres something wrong here...with what numbers are in the different area columns. Need to troubleshoot...**
 
 
 
