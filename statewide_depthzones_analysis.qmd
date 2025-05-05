@@ -32,7 +32,7 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, l
 rds.dir <- "/capstone/marinebiomaps/data/rds-files"
 substrate_in_mpas <- readRDS(file.path(rds.dir, "substrate_in_mpas.rds"))
 biota_in_mpas <- readRDS(file.path(rds.dir, "biota_in_mpas.rds"))
-substrate_outside_mpas <- readRDS(file.path(rds.dir, "substrate_outside_mpas.rds"))
+#substrate_outside_mpas <- readRDS(file.path(rds.dir, "substrate_outside_mpas.rds"))
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
@@ -41,7 +41,7 @@ mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protect
 # Clean and transform MPA boundaries data
 mpas <- mpa_boundaries |> 
   clean_names() |> 
-  st_transform(mpas, crs = st_crs(substrate)) |> 
+  st_transform(mpas, crs = st_crs(substrate_in_mpas)) |> 
   st_make_valid()
 
 ```
@@ -108,7 +108,7 @@ zone_areas |>
 *Note: The total area calculated is higher than the sum of the total added together zone areas, which total 34,766,903.27. This is a 369,000 hectare difference. I will try to figure out why, but am at the moment assuming that there are N/A values, or polygons that are not marked as being part of any zone.*
 
 ```{r}
-# Lets make a plot of this!
+# Lets make a plot of this! this does not filter out federal zones
 zone_areas |> 
   ggplot(aes(x = pmep_zone_detail, 
              y = percent_of_total)) +
@@ -126,26 +126,56 @@ zone_areas |>
 ```
 
 ```{r}
-zones_to_plot <- c("Zone 0", "Zone 1", "Zone 2", "Zone 4", "Zone 6")
+# Taking out zone 1 since it is empty....as well as the federal zones
+zones_to_plot <- c("Zone 0", "Zone 2", "Zone 4", "Zone 6", "Zone 8")
 
 zone_areas_filtered <- zone_areas |> 
   filter(pmep_zone_detail %in% zones_to_plot) |> 
-  mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
+  mutate(pmep_zone_detail = case_when(
+    pmep_zone_detail == "Zone 0" ~ "Landward Zone",
+    pmep_zone_detail == "Zone 2" ~ "Core Zone (Shoreline to -30m)",
+    pmep_zone_detail == "Zone 4" ~ "Seaward Zone (-30m to -100m)",
+    pmep_zone_detail == "Zone 6" ~ "Deep Shelf or Sound (-100m to -200m)",
+    pmep_zone_detail == "Zone 8" ~ "Outside PMEP Scope (>-200m)"
+  )) |> 
+  mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = c(
+    "Landward Zone",
+    "Core Zone (Shoreline to -30m)",
+    "Seaward Zone (-30m to -100m)",
+    "Deep Shelf or Sound (-100m to -200m)",
+    "Outside PMEP Scope (>-200m)"
+  )))
 
+font_add_google("Montserrat", "montserrat")
+showtext_auto()
 
-ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
-  geom_col(fill = "#71D9B0") +
+ggplot(zone_areas_filtered, aes(x = percent_of_total, y = pmep_zone_detail, fill = pmep_zone_detail)) +
+  geom_col() +
   labs(
-    title = "Selected PMEP Zones: Percent of Total MPA Area",
-    x = "PMEP Zone",
-    y = "Percent of Total Area (%)"
+    title = "Depth Zones as a % of Total Statewide MPA Area",
+    x = "Percent of Total Area (%)",
+    y = "PMEP Depth Zone"
   ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  geom_text(aes(label = paste0(round(percent_of_total, 1), "%")), 
-            vjust = -0.5, size = 3.5)
+  theme_classic() +
+  theme(
+    text = element_text(family = "montserrat", size = 18),
+    axis.text.x = element_text(hjust = 1),
+    legend.position = "none") +
+  geom_label(aes(label = paste0(round(percent_of_total, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_fill_brewer(palette = "Blues") +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
 
 ```
+
+```{r}
+unique(zone_areas_filtered$pmep_zone_detail)
+```
+
 
 ```{r}
 # A minimal base to put into photoshop for styling
@@ -372,5 +402,46 @@ leaflet() |>
             title = "MPA Study Region")
 ```
 
+## This will make a map of the full study regions as they stand, without extending the latitude line to include all state waters. 
+```{r}
+# Make a map of the MLPA Study regions without MPAs
+sr_boundary.dir <- "/capstone/marinebiomaps/data/MLPA_Study_Regions"
+sr_boundaries <- sf::st_read(file.path(sr_boundary.dir, "Marine_Life_Protection_Act_Study_Regions_-_R7_-_CDFW_[ds3178].shp")) |> 
+  clean_names()
 
+```
+
+```{r}
+colnames(sr_boundaries)
+```
+```{r}
+unique(sr_boundaries$study_regi)
+```
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+sr_boundaries <- st_transform(sr_boundaries, crs = 4326)
+
+# Factorize study regions
+unique_regions <- c("NCSR", "NCCSR", "SFBSR", "CCSR", "SCSR")
+sr_boundaries$study_regi <- factor(sr_boundaries$study_regi, levels = unique_regions)
+
+# Define custom color palette
+custom_colors <- c("#C4A9C2", "#71D9B0", "#D8C397", "#6EA1C8", "#796655")
+pal <- colorFactor(palette = custom_colors, domain = unique_regions)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = sr_boundaries,
+              color = ~pal(study_regi), # Assign colors based on study_region
+              weight = 3,
+              popup = paste0("Study Region Name:  ", sr_boundaries$name, "<br>",
+                             "Study Region Abbreviation:  ", sr_boundaries$study_regi, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = sr_boundaries$study_regi,
+            title = "MLPA Study Region")
+```
 
