@@ -107,23 +107,6 @@ zone_areas |>
 ```
 *Note: The total area calculated is higher than the sum of the total added together zone areas, which total 34,766,903.27. This is a 369,000 hectare difference. I will try to figure out why, but am at the moment assuming that there are N/A values, or polygons that are not marked as being part of any zone.*
 
-```{r}
-# Lets make a plot of this! this does not filter out federal zones
-zone_areas |> 
-  ggplot(aes(x = pmep_zone_detail, 
-             y = percent_of_total)) +
-  geom_col(fill = "#C4A9C2") +
-  labs(
-    title = "Percentage of Total MPA Area by PMEP Zone",
-    x = "PMEP Zone",
-    y = "Percent of Total Area (%)"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  geom_text(aes(label = paste0(round(percent_of_total, 1), "%")), 
-            vjust = -0.5, size = 3.5)
-
-```
 
 ```{r}
 # Taking out zone 1 since it is empty....as well as the federal zones
@@ -172,32 +155,6 @@ ggplot(zone_areas_filtered, aes(x = percent_of_total, y = pmep_zone_detail, fill
 
 ```
 
-```{r}
-unique(zone_areas_filtered$pmep_zone_detail)
-```
-
-
-```{r}
-# A minimal base to put into photoshop for styling
-zones_to_plot <- c("Zone 0", "Zone 1", "Zone 2", "Zone 4", "Zone 6")
-
-zone_areas_filtered <- zone_areas |> 
-  filter(pmep_zone_detail %in% zones_to_plot) |> 
-  mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
-
-
-ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
-  geom_col(fill = "#71D9B0") +
-  labs(
-    #title = "Selected PMEP Zones: Percent of Total MPA Area",
-    x = NULL,
-    y = NULL
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_blank(),
-        axis.text.y = element_blank())
-
-```
 *Where is zone 1?? not in MPAs apparently...gonna look into that. There is probably some zone 1 outside of mpas- where is it at? Estuaries data, perhaps?*
 
 
@@ -207,39 +164,27 @@ ggplot(zone_areas_filtered, aes(x = pmep_zone_detail, y = percent_of_total)) +
 
 
 ```{r}
-unique(substrate_in_mpas_simple)
+unique(substrate_in_mpas_simple$pmep_zone_detail)
 ```
 
 ```{r}
-# Make a dataframe for each of the depth zones
+# Make a dataframe for each of the depth zones - ONLY STATE WATERS
 zone0_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 0")
 
 zone2_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 2")
 
-zone3_df <- substrate_in_mpas_simple |> 
-  filter(pmep_zone_detail == "Zone 3")
-
 zone4_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 4")
 
-zone5_df <- substrate_in_mpas_simple |> 
-  filter(pmep_zone_detail == "Zone 5")
-
 zone6_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 6") 
-
-zone7_df <- substrate_in_mpas_simple |> 
-  filter(pmep_zone_detail == "Zone 7")
 
 zone8_df <- substrate_in_mpas_simple |> 
   filter(pmep_zone_detail == "Zone 8")
 ```
 
-```{r}
-unique(zone8_df$cmecs_sc_category)
-```
 
 ```{r}
 total_ha_zone0 <- sum(zone0_df$area_ha, na.rm = TRUE)
@@ -266,38 +211,226 @@ zone0_with_sub |>
   cat(sep = "\n")
 
 ```
-**NOTE: I ran this analysis with cmecs_sc_name as well, and it was interesting, but a lot of categories with very small #s. This reinforces the decision we made as a team to use the cmecs_sc_category column intead for our analysis, as it groups some of these smaller categories together. I will leave a graph example in the outputs folder of this repository as an illustration of this, but will move on to using cmecs_sc_category unless otherwise instructed.**
+**NOTE: I ran this analysis with cmecs_sc_name as well, and it was interesting, but a lot of categories with very small #s. This reinforces the decision we made as a team to use the cmecs_sc_category column intead for our analysis, as it groups some of these smaller categories together.**
 
 ```{r}
-# zone_areas_filtered <- zone_areas |> 
-#   filter(pmep_zone_detail %in% zones_to_plot) |> 
-#   mutate(pmep_zone_detail = factor(pmep_zone_detail, levels = zones_to_plot))
+# Define palette -- adapted from lisa::C_M_Coolidge from scale_fill_paletteer
+substrate_palette <- c("#204035FF", "#4A7169FF", "#849383", "#BEB59CFF", "#998467", "#735231FF", "#49271BFF")
 
-
-ggplot(zone0_with_sub, aes(x = cmecs_sc_category, y = percent_of_total0)) +
-  geom_col(fill = "#796655") +
+ggplot(zone0_with_sub, aes(x = percent_of_total0, y = cmecs_sc_category, fill = cmecs_sc_category)) +
+  geom_col() +
   labs(
     title = "Substrates represented in Depth Zone 0",
     x = "PMEP Substrate Category",
     y = "Percent of Total Area (%)"
   ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  geom_text(aes(label = paste0(round(percent_of_total0, 1), "%")), 
-            vjust = -0.5, size = 3.5)
+  scale_fill_manual(values = substrate_palette) +
+  theme_classic() +
+  theme(text = element_text(family = "montserrat", size = 18),
+    legend.position = 'none',
+    axis.text.x = element_text(hjust = 1)) +
+  geom_label(aes(label = paste0(round(percent_of_total0, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
 ```
+
 ```{r}
 # Calculate Zone 2 sub!!
+total_ha_zone2 <- sum(zone2_df$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Zone 2 in Ha: ", round(total_ha_zone2, 2)))
+
+# Calculate percentage of substrates per depth zone
+zone2_with_sub <- zone2_df |> 
+  group_by(cmecs_sc_category) |> 
+  summarize(persub_area_ha2 = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total2 = (persub_area_ha2 / total_ha_zone2) * 100)
+
+# Print formatted output
+zone2_with_sub |> 
+  arrange(cmecs_sc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_category, 
+    ": ", 
+    round(persub_area_ha2, 2), " ha (", 
+    round(percent_of_total2, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+```
+```{r}
+# Plot Zone 2!!
+ggplot(zone2_with_sub, aes(x = percent_of_total2, y = cmecs_sc_category, fill = cmecs_sc_category)) +
+  geom_col() +
+  labs(
+    title = "Substrates represented in Depth Zone 2",
+    x = "PMEP Substrate Category",
+    y = "Percent of Total Area (%)"
+  ) +
+  scale_fill_manual(values = substrate_palette) +
+  theme_classic() +
+  theme(text = element_text(family = "montserrat", size = 18),
+    legend.position = 'none',
+    axis.text.x = element_text(hjust = 1)) +
+  geom_label(aes(label = paste0(round(percent_of_total2, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
 ```
 
 ```{r}
 # Calculate Zone 4 sub!!
+total_ha_zone4 <- sum(zone4_df$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Zone 4 in Ha: ", round(total_ha_zone4, 2)))
+
+# Calculate percentage of substrates per depth zone
+zone4_with_sub <- zone4_df |> 
+  group_by(cmecs_sc_category) |> 
+  summarize(persub_area_ha4 = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total4 = (persub_area_ha4 / total_ha_zone4) * 100)
+
+# Print formatted output
+zone4_with_sub |> 
+  arrange(cmecs_sc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_category, 
+    ": ", 
+    round(persub_area_ha4, 2), " ha (", 
+    round(percent_of_total4, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
 ```
+```{r}
+# Plot Zone 4
+ggplot(zone4_with_sub, aes(x = percent_of_total4, y = cmecs_sc_category, fill = cmecs_sc_category)) +
+  geom_col() +
+  labs(
+    title = "Substrates represented in Depth Zone 4",
+    x = "PMEP Substrate Category",
+    y = "Percent of Total Area (%)"
+  ) +
+  scale_fill_manual(values = substrate_palette) +
+  theme_classic() +
+  theme(text = element_text(family = "montserrat", size = 18),
+    legend.position = 'none',
+    axis.text.x = element_text(hjust = 1)) +
+  geom_label(aes(label = paste0(round(percent_of_total4, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
+```
+
 
 ```{r}
 # Calculate Zone 6 sub!! 
+total_ha_zone6 <- sum(zone6_df$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Zone 6 in Ha: ", round(total_ha_zone6, 2)))
+
+# Calculate percentage of substrates per depth zone
+zone6_with_sub <- zone6_df |> 
+  group_by(cmecs_sc_category) |> 
+  summarize(persub_area_ha6 = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total6 = (persub_area_ha6 / total_ha_zone6) * 100)
+
+# Print formatted output
+zone6_with_sub |> 
+  arrange(cmecs_sc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_category, 
+    ": ", 
+    round(persub_area_ha6, 2), " ha (", 
+    round(percent_of_total6, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+```
+```{r}
+# Plot Zone 6
+ggplot(zone6_with_sub, aes(x = percent_of_total6, y = cmecs_sc_category, fill = cmecs_sc_category)) +
+  geom_col() +
+  labs(
+    title = "Substrates represented in Depth Zone 6",
+    x = "PMEP Substrate Category",
+    y = "Percent of Total Area (%)"
+  ) +
+  scale_fill_manual(values = substrate_palette) +
+  theme_classic() +
+  theme(text = element_text(family = "montserrat", size = 18),
+    legend.position = 'none',
+    axis.text.x = element_text(hjust = 1)) +
+  geom_label(aes(label = paste0(round(percent_of_total6, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
 ```
 
+
+```{r}
+# Calculate Zone 8 sub!!
+total_ha_zone8 <- sum(zone8_df$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Zone 8 in Ha: ", round(total_ha_zone8, 2)))
+
+# Calculate percentage of substrates per depth zone
+zone8_with_sub <- zone8_df |> 
+  group_by(cmecs_sc_category) |> 
+  summarize(persub_area_ha8 = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total8 = (persub_area_ha8 / total_ha_zone8) * 100)
+
+# Print formatted output
+zone8_with_sub |> 
+  arrange(cmecs_sc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_category, 
+    ": ", 
+    round(persub_area_ha8, 2), " ha (", 
+    round(percent_of_total8, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+```
+```{r}
+# Plot zone 8
+ggplot(zone8_with_sub, aes(x = percent_of_total8, y = cmecs_sc_category, fill = cmecs_sc_category)) +
+  geom_col() +
+  labs(
+    title = "Substrates represented in Depth Zone 8",
+    x = "PMEP Substrate Category",
+    y = "Percent of Total Area (%)"
+  ) +
+  scale_fill_manual(values = substrate_palette) +
+  theme_classic() +
+  theme(text = element_text(family = "montserrat", size = 18),
+    legend.position = 'none',
+    axis.text.x = element_text(hjust = 1)) +
+  geom_label(aes(label = paste0(round(percent_of_total8, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
+```
 
 
 ### Work on reading in biota to integrate into analysis
@@ -310,6 +443,52 @@ ggplot(zone0_with_sub, aes(x = cmecs_sc_category, y = percent_of_total0)) +
 biota_in_mpas_simple <- biota_in_mpas |> 
   st_drop_geometry()
 ```
+
+```{r}
+unique(zone2_df$cmecs_sc_category)
+```
+```{r}
+unique(zone2_df$pmep_zone_detail)
+```
+```{r}
+unique(substrate_in_mpas$pmep_zone_detail)
+```
+
+```{r}
+# FIRST: TAKE A GEODF OF A DEPTH ZONE, AND FILTER IT TO JUST ONE OF THE RELEVANT TYPES, UNTIL WE HAVE A GEODF OF EACH SUB TYPE WE ARE ANALYZING
+# LETS START WITH UNCONSOLIDATED MINERAL SUBSTRATE IN ZONE 2
+zone2_geo_UMS <- substrate_in_mpas |> 
+  filter(pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters") |> 
+  filter(cmecs_sc_category == "Unconsolidated Mineral Substrate")
+
+```
+
+```{r}
+# NEXT: MAKE A GEODF OF BIOTA IN ZONE 2
+zone2_bio <- biota_in_mpas |> 
+  filter(pmep_zone == "2")
+```
+
+```{r}
+# NEXT: JOIN UMS DF WITH BIOTA DF, SO THAT ONLY THE BIOTA THAT INTERSECTS WITH THE UMS REMAINS
+ums_bio <- st_intersection(zone2_geo_UMS, zone0_bio)
+```
+```{r}
+unique(ums_bio$cmecs_bc_category)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 **This chunk below is still a major work in progres...don't look too close, also variable names are currently wrong**
@@ -324,6 +503,10 @@ subgeo_zone4_df <- depths_with_sub |>
 
 subgeo_zone6_df <- depths_with_sub |> 
   filter(pmep_zone_detail == "Zone 6") 
+
+
+
+
 
 biogeo_zone2_df <- depths_with_biota |> 
   filter(pmep_zone == 2) |> 
