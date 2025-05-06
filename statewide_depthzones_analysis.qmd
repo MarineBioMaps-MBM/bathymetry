@@ -221,8 +221,8 @@ ggplot(zone0_with_sub, aes(x = percent_of_total0, y = cmecs_sc_category, fill = 
   geom_col() +
   labs(
     title = "Substrates represented in Depth Zone 0",
-    x = "PMEP Substrate Category",
-    y = "Percent of Total Area (%)"
+    x = "Percent of Total Area (%)",
+    y = "PMEP Substrate Category"
   ) +
   scale_fill_manual(values = substrate_palette) +
   theme_classic() +
@@ -269,8 +269,8 @@ ggplot(zone2_with_sub, aes(x = percent_of_total2, y = cmecs_sc_category, fill = 
   geom_col() +
   labs(
     title = "Substrates represented in Depth Zone 2",
-    x = "PMEP Substrate Category",
-    y = "Percent of Total Area (%)"
+    x = "Percent of Total Area (%)",
+    y = "PMEP Substrate Category"
   ) +
   scale_fill_manual(values = substrate_palette) +
   theme_classic() +
@@ -317,8 +317,8 @@ ggplot(zone4_with_sub, aes(x = percent_of_total4, y = cmecs_sc_category, fill = 
   geom_col() +
   labs(
     title = "Substrates represented in Depth Zone 4",
-    x = "PMEP Substrate Category",
-    y = "Percent of Total Area (%)"
+    x = "Percent of Total Area (%)",
+    y = "PMEP Substrate Category"
   ) +
   scale_fill_manual(values = substrate_palette) +
   theme_classic() +
@@ -366,8 +366,8 @@ ggplot(zone6_with_sub, aes(x = percent_of_total6, y = cmecs_sc_category, fill = 
   geom_col() +
   labs(
     title = "Substrates represented in Depth Zone 6",
-    x = "PMEP Substrate Category",
-    y = "Percent of Total Area (%)"
+    x = "Percent of Total Area (%)",
+    y = "PMEP Substrate Category"
   ) +
   scale_fill_manual(values = substrate_palette) +
   theme_classic() +
@@ -415,8 +415,8 @@ ggplot(zone8_with_sub, aes(x = percent_of_total8, y = cmecs_sc_category, fill = 
   geom_col() +
   labs(
     title = "Substrates represented in Depth Zone 8",
-    x = "PMEP Substrate Category",
-    y = "Percent of Total Area (%)"
+    x = "Percent of Total Area (%)",
+    y = "PMEP Substrate Category"
   ) +
   scale_fill_manual(values = substrate_palette) +
   theme_classic() +
@@ -471,76 +471,83 @@ zone2_bio <- biota_in_mpas |>
 
 ```{r}
 # NEXT: JOIN UMS DF WITH BIOTA DF, SO THAT ONLY THE BIOTA THAT INTERSECTS WITH THE UMS REMAINS
-ums_bio <- st_intersection(zone2_geo_UMS, zone0_bio)
+ums_bio <- st_intersection(zone2_geo_UMS, zone2_bio)
 ```
 ```{r}
 unique(ums_bio$cmecs_bc_category)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-**This chunk below is still a major work in progres...don't look too close, also variable names are currently wrong**
 ```{r}
-# Make dataframes of biota and sub for each zone - KEEP GEO AND ONLY FOR ZONES WE CARE ABOUT
-
-subgeo_zone2_df <- depths_with_sub |> 
-  filter(pmep_zone_detail == "Zone 2")
-
-subgeo_zone4_df <- depths_with_sub |> 
-  filter(pmep_zone_detail == "Zone 4")
-
-subgeo_zone6_df <- depths_with_sub |> 
-  filter(pmep_zone_detail == "Zone 6") 
-
-
-
-
-
-biogeo_zone2_df <- depths_with_biota |> 
-  filter(pmep_zone == 2) |> 
-  st_transform(biogeo_zone2_df, crs = st_crs(depths_with_sub))
-
-biogeo_zone4_df <- depths_with_biota |> 
-  filter(pmep_zone == 4)|> 
-  st_transform(biogeo_zone4_df, crs = st_crs(depths_with_sub))
-
-biogeo_zone6_df <- depths_with_biota |> 
-  filter(pmep_zone == 6)|> 
-  st_transform(biogeo_zone6_df, crs = st_crs(depths_with_sub))
-
+# Calculate area in order to find percentages - just do it all over again in case the join messed something up
+ums_bio <- ums_bio |> 
+  st_transform(ums_bio, crs = 32610) |> 
+  mutate(ums_bio_area_ha = as.numeric(st_area(geometry))/10000)
 ```
 
 ```{r}
-# Join dfs for zone 2, so we can know what biota overlaps with what substrate
-zone2_subbio_overlap <- st_intersection(biogeo_zone2_df, subgeo_zone2_df)
+# Turn it simple now that we've calculated polygon areas
+ums_bio_simple <- ums_bio |> 
+  st_drop_geometry() |> 
+  filter(cmecs_bc_category != "Unclassified")
 ```
+
 
 ```{r}
-# Ok that worked but took forever. I think i want to filter both to region as well, and then run the join on each region, as well as zone. then, combine the data from the joins. 
+total_ha_ums_bio <- sum(ums_bio_simple$ums_bio_area_ha, na.rm = TRUE)
 
+print(paste0("The total area of Zone 2 Unconsolidated Mineral Substrate in Ha: ", round(total_ha_ums_bio, 2)))
+
+# Calculate percentage of biota types per UMS
+ums_bio_percentages <- ums_bio_simple |> 
+  group_by(cmecs_bc_category) |> 
+  summarize(perbio_area_ha2 = sum(ums_bio_area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_umsbio = (perbio_area_ha2 / total_ha_ums_bio) * 100)
+
+# Print formatted output
+ums_bio_percentages |> 
+  arrange(cmecs_bc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_bc_category, 
+    ": ", 
+    round(perbio_area_ha2, 2), " ha (", 
+    round(percent_of_total_umsbio, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
 ```
+
+**Dropping unclassified majorly changes these numbers...im still just not sure about that one...will ask maddy and michelle to clarify again, and make sure that Unclassified is functionally the same as NULL**
 
 ```{r}
-# Now that the tables are joined, we have a df that is just the bio that overlaps with the sub...theoretically now can drop the geo, make little dfs of each sub type, and then calculate what biotas take up what percentages of that sub
+# Create biota palette
+biota_pal <- c("seagreen", "#A3AD62FF", "#D0D3A2", "#798234FF", "#F0C6C3FF", "#DF91A3FF", "#D46780FF" )
 
-colnames(zone2_subbio_overlap)
+# Plot
+ggplot(ums_bio_percentages, aes(x = percent_of_total_umsbio, y = cmecs_bc_category, fill = cmecs_bc_category)) +
+  geom_col() +
+  labs(
+    title = "Biota represented in Unconsolidated Mineral Substrate within Depth Zone 2",
+    x = "Percent of Total Area (%)",
+    y = "PMEP Biota Category"
+  ) +
+  scale_fill_manual(values = biota_pal) +
+  theme_classic() +
+  theme(text = element_text(family = "montserrat", size = 18),
+    legend.position = 'none',
+    axis.text.x = element_text(hjust = 1)) +
+  geom_label(aes(label = paste0(round(percent_of_total_umsbio, 1), "%")),
+             fill = "white", 
+             color = "black",
+             hjust = 0,    # Align to left
+             x = 1,        # Set near y-axis (adjust as needed)
+             size = 3.5) +
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
 ```
 
-```{r}
-head(zone2_subbio_overlap)
-```
+
+
+
+
 
 
 
