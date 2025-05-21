@@ -29,6 +29,7 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, l
 # Read in ncsr substrate data
 rds.dir <- "/capstone/marinebiomaps/data/rds-files/"
 ncsr_substrate <- readRDS(file.path(rds.dir, "ncsr_substrate.rds"))
+ncsr_substrate_fullregion <- readRDS(file.path(rds.dir, "ncsr_substrate_fullregion.rds"))
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
@@ -40,16 +41,21 @@ mpas <- mpa_boundaries |>
   st_transform(mpas, crs = st_crs(ncsr_substrate)) |> 
   st_make_valid()
 ```
+
 ```{r}
 # Make a simple dataframe
 ncsr_substrate_simple <- ncsr_substrate |> 
+  st_drop_geometry()
+
+ncsr_substrate_fullregion_simple <- ncsr_substrate_fullregion |> 
   st_drop_geometry()
 ```
 
 ```{r}
 # Take a look at all the PMEP depth zones to verify
-unique(ncsr_substrate_simple$pmep_zone_detail)
+unique(ncsr_substrate_fullregion_simple$pmep_zone_detail)
 ```
+
 ```{r}
 # Rename depth zone variables for searchability/ease - I will bring back more technical names for viz
 ncsr_substrate_simple <- ncsr_substrate_simple |> 
@@ -64,9 +70,23 @@ ncsr_substrate_simple <- ncsr_substrate_simple |>
     pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
   ))
 
+ncsr_substrate_fullregion_simple <- ncsr_substrate_fullregion_simple |> 
+  mutate(pmep_zone_detail = case_when(
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
+    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
+    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
+  ))
 
-unique(ncsr_substrate_simple$pmep_zone_detail)
+
+
+unique(ncsr_substrate_fullregion_simple$pmep_zone_detail)
 ```
+
 ```{r}
 # Total area across NCSR MPAs
 total_ha_ncsr_mpas <- sum(ncsr_substrate_simple$area_ha, na.rm = TRUE)
@@ -92,6 +112,34 @@ zone_areas_ncsr |>
   cat(sep = "\n")
 
 ```
+
+```{r}
+# Total area across NCSR MPAs
+total_ha_ncsr_fullregion <- sum(ncsr_substrate_fullregion_simple$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Substrate data within NCSR Statewaters: ", round(total_ha_ncsr_fullregion, 3)))
+
+# Summarize total area by zone and calculate percentage
+zone_areas_ncsr_fullregion <- ncsr_substrate_fullregion_simple |> 
+  group_by(pmep_zone_detail) |> 
+  summarize(total_area_per_zone_ncsr_fullregion = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_ncsr_fullregion = (total_area_per_zone_ncsr_fullregion / total_ha_ncsr_fullregion) * 100)
+
+# Print formatted output
+zone_areas_ncsr_fullregion |> 
+  arrange(pmep_zone_detail) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    pmep_zone_detail, 
+    ": ", round(total_area_per_zone_ncsr_fullregion, 3), " ha (", 
+    round(percent_of_total_ncsr_fullregion, 3), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+```
+
+
 **NOTE: the fact that the "federal waters" zones have anything at all in them is strange, considering that we have already filtered to MPAs, which I assume are all state waters? But maybe not? Bears clarifying.**
 
 ```{r}
@@ -141,8 +189,45 @@ ggplot(zone_areas_filtered_ncsr, aes(x = percent_of_total_ncsr, y = pmep_zone_de
 
 ```
 
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+ncsr_substrate <- st_transform(ncsr_substrate, crs = 4326)
 
+#ncsr_substrate_simplify <- st_simplify(ncsr_substrate_simplify, dTolerance = 40000)
+  
 
+ncsr_substrate$cmecs_sc_category <- as.character(ncsr_substrate$cmecs_sc_category)
+
+# Define custom color palette
+substrate_categories <- unique(ncsr_substrate$cmecs_sc_category)
+substrate_palette <- c("#204035FF", "#4A7169FF", "#849383", "#BEB59CFF", "#998467", "#735231FF", "#49271BFF")
+pal <- colorFactor(palette = substrate_palette, domain = substrate_categories)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -124.3917, lat = 40.4667, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = mpas,
+              color = "goldenrod", # Assign colors based on study_region
+              weight = 2,
+              fillOpacity = 0,     # No fill
+              
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |> 
+  addPolygons(data = ncsr_substrate,
+              color = ~pal(cmecs_sc_category), # Assign colors based on type
+              weight = 3,
+              fillOpacity = 1,
+              popup = paste0("Substrate type:  ", ncsr_substrate$cmecs_sc_category, "<br>",
+                              "Substrate type area:  ", ncsr_substrate$area_ha, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = ncsr_substrate$cmecs_sc_category,
+            title = "Substrate Within MPAs")
+```
 
 
 

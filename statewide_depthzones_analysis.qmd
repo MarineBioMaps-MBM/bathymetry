@@ -592,7 +592,7 @@ leaflet() |>
             title = "MPA Study Region")
 ```
 
-## This will make a map of the full study regions as they stand, without extending the latitude line to include all state waters. 
+## This will make a map of the full study regions as they stand. 
 ```{r}
 # Make a map of the MLPA Study regions without MPAs
 sr_boundary.dir <- "/capstone/marinebiomaps/data/MLPA_Study_Regions"
@@ -604,9 +604,16 @@ sr_boundaries <- sf::st_read(file.path(sr_boundary.dir, "Marine_Life_Protection_
 ```{r}
 colnames(sr_boundaries)
 ```
+
 ```{r}
 unique(sr_boundaries$study_regi)
 ```
+
+```{r}
+# Join mpas with sr_boundaries datasets, so that there is no sr_boundaries data where the mpa data is, so that when you click on an mpa in the interactive map, it shows the mpa name instead of the region name. 
+```
+
+
 ```{r}
 # Transform CRS for this map, since leaflet requires WGS84
 sr_boundaries <- st_transform(sr_boundaries, crs = 4326)
@@ -634,4 +641,125 @@ leaflet() |>
             values = sr_boundaries$study_regi,
             title = "MLPA Study Region")
 ```
+
+
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+
+# Factorize study regions
+unique_regions <- c("NCSR", "NCCSR", "SFBSR", "CCSR", "SCSR")
+mpas$study_regi <- factor(mpas$study_regi, levels = unique_regions)
+
+# Define custom color palette
+custom_colors <- c("#C4A9C2", "#71D9B0", "#D8C397", "#6EA1C8", "#796655")
+pal <- colorFactor(palette = custom_colors, domain = unique_regions)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = mpas,
+              color = "goldenrod", # Assign colors based on study_region
+              weight = 3,
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |> 
+  addPolygons(data = sr_boundaries,
+              color = ~pal(study_regi), # Assign colors based on study_region
+              weight = 3,
+              popup = paste0("Study Region Name:  ", sr_boundaries$name, "<br>",
+                             "Study Region Abbreviation:  ", sr_boundaries$study_regi, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = mpas$study_regi,
+            title = "MPA Study Region",
+            ) 
+
+```
+
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+biota_in_mpas <- st_transform(biota_in_mpas, crs = 4326) |> 
+  filter(cmecs_bc_category != "Unclassified") |> 
+  filter(!is.na(cmecs_bc_category))
+
+biota_in_mpas$cmecs_bc_category <- as.character(biota_in_mpas$cmecs_bc_category)
+
+# Define custom color palette
+biota_categories <- unique(biota_in_mpas$cmecs_bc_category)
+custom_colors <- c('#C4A9C2', '#D8C397', '#A5CEA4', '#71D9B0', '#09EEC8', '#3BAF85', '#6EA1C8')
+pal <- colorFactor(palette = custom_colors, domain = biota_categories)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = mpas,
+              color = "goldenrod", # Assign colors based on study_region
+              weight = 2,
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |> 
+  addPolygons(data = biota_in_mpas,
+              color = ~pal(cmecs_bc_category)) # Assign colors based on type
+              #weight = 3,
+              # popup = paste0("Biota type:  ", biota_in_mpas$cmecs_bc_category, "<br>",
+              #                "Biota type area:  ", biota_in_mpas$area_ha, "<br>"))
+  # addLegend(position = "topright",
+  #           pal = pal,
+  #           values = biota_in_mpas$cmecs_bc_category,
+  #           title = "Biota Within MPAs")
+```
+
+
+
+```{r}
+# Transform CRS for this map, since leaflet requires WGS84
+mpas <- st_transform(mpas, crs = 4326)
+substrate_in_mpas_simplify <- st_transform(substrate_in_mpas, crs = 4326)
+
+substrate_in_mpas_simplify <- st_simplify(substrate_in_mpas_simplify, dTolerance = 40000)
+  
+
+substrate_in_mpas$cmecs_sc_category <- as.character(substrate_in_mpas$cmecs_sc_category)
+
+# Define custom color palette
+substrate_categories <- unique(substrate_in_mpas$cmecs_sc_category)
+substrate_palette <- c("#204035FF", "#4A7169FF", "#849383", "#BEB59CFF", "#998467", "#735231FF", "#49271BFF")
+pal <- colorFactor(palette = substrate_palette, domain = substrate_categories)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = mpas,
+              color = "goldenrod", # Assign colors based on study_region
+              weight = 2,
+              fillOpacity = 0,     # No fill
+              
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |> 
+  addPolygons(data = substrate_in_mpas,
+              color = ~pal(cmecs_sc_category), # Assign colors based on type
+              weight = 3,
+              popup = paste0("Substrate type:  ", substrate_in_mpas$cmecs_sc_category, "<br>",
+                              "Substrate type area:  ", substrate_in_mpas$area_ha, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = substrate_in_mpas$cmecs_sc_category,
+            title = "Substrate Within MPAs")
+```
+
+
+
+
+
+
+
 

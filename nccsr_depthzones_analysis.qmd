@@ -32,7 +32,9 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, l
 # Read in substrate and biotic data
 rds.dir <- "/capstone/marinebiomaps/data/rds-files"
 nccsr_substrate <- readRDS(file.path(rds.dir, "nccsr_substrate.rds"))
+nccsr_substrate_fullregion <- readRDS(file.path(rds.dir, "nccsr_substrate_fullregion.rds"))
 nccsr_biota <- readRDS(file.path(rds.dir, "nccsr_biota.rds"))
+
 
 # Read in MPA boundaries data
 boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
@@ -50,15 +52,19 @@ mpas <- mpa_boundaries |>
 # Make a simple dataframe
 nccsr_substrate_simple <- nccsr_substrate |> 
   st_drop_geometry()
+
+nccsr_substrate_fullregion_simple <- nccsr_substrate_fullregion |> 
+  st_drop_geometry()
 ```
 
 ```{r}
 # Take a look at all the PMEP depth zones to verify
-unique(nccsr_substrate_simple$pmep_zone_detail)
+unique(nccsr_substrate_fullregion_simple$pmep_zone_detail)
 ```
+
 ```{r}
 # Rename depth zone variables for searchability/ease - I will bring back more technical names for viz
-nccsr_substrate_simple <- nccsr_substrate_simple |> 
+nccsr_substrate_fullregion_simple <- nccsr_substrate_fullregion_simple |> 
   mutate(pmep_zone_detail = case_when(
     pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
     pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
@@ -71,28 +77,28 @@ nccsr_substrate_simple <- nccsr_substrate_simple |>
   ))
 
 
-unique(nccsr_substrate_simple$pmep_zone_detail)
+unique(nccsr_substrate_fullregion_simple$pmep_zone_detail)
 ```
 ```{r}
 # Total area across NCSR MPAs
-total_ha_nccsr_mpas <- sum(nccsr_substrate_simple$area_ha, na.rm = TRUE)
+total_ha_nccsr_fullregion <- sum(nccsr_substrate_fullregion_simple$area_ha, na.rm = TRUE)
 
-print(paste0("The total area of Substrate data within NCCSR MPAs in Ha: ", round(total_ha_nccsr_mpas, 2)))
+print(paste0("The total area of Substrate data within NCCSR Statewaters: ", round(total_ha_nccsr_fullregion, 2)))
 
 # Summarize total area by zone and calculate percentage
-zone_areas_nccsr <- nccsr_substrate_simple |> 
+zone_areas_nccsr_fullregion <- nccsr_substrate_fullregion_simple |> 
   group_by(pmep_zone_detail) |> 
-  summarize(total_area_per_zone_nccsr = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
-  mutate(percent_of_total_nccsr = (total_area_per_zone_nccsr / total_ha_nccsr_mpas) * 100)
+  summarize(total_area_per_zone_nccsr_fullregion = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_nccsr_fullregion = (total_area_per_zone_nccsr_fullregion / total_ha_nccsr_fullregion) * 100)
 
 # Print formatted output
-zone_areas_nccsr |> 
+zone_areas_nccsr_fullregion |> 
   arrange(pmep_zone_detail) |> 
   rowwise() |> 
   mutate(print_statement = paste0(
     pmep_zone_detail, 
-    ": ", round(total_area_per_zone_nccsr, 2), " ha (", 
-    round(percent_of_total_nccsr, 2), "% of total)"
+    ": ", round(total_area_per_zone_nccsr_fullregion, 2), " ha (", 
+    round(percent_of_total_nccsr_fullregion, 2), "% of total)"
   )) |> 
   pull(print_statement) |> 
   cat(sep = "\n")
