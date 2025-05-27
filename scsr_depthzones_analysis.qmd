@@ -482,25 +482,37 @@ scsr_boundary <- sf::st_read(file.path(sr_boundary.dir, "Marine_Life_Protection_
   clean_names() |> 
   st_transform(st_crs(scsr_substrate)) |> 
   st_make_valid() |> 
-  filter(study_regi == "SCSR")
+  filter(study_regi == "SCSR") |> 
+  mutate(area_ha_scsr = as.numeric(st_area(geometry) / 10000))
 ```
 
 ```{r}
 colnames(scsr_boundary)
 ```
-
+## Read in MPAs data...since the absolute abundance data tables are for components WITHIN MPAS
 ```{r}
-# Add this to pipe once i verify col names 
-#mutate(area_ha_scsr = as.numeric(st_area(geometry) / 10000))
+# Read in MPA boundaries data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+# Clean and transform MPA boundaries data
+scsr_mpas <- mpa_boundaries |> 
+  clean_names() |> 
+  st_transform(st_crs(scsr_substrate)) |> 
+  st_make_valid() |> 
+  rename(hectares_mpa = hectares) |> 
+  filter(study_regi == "SCSR") |> 
+  mutate(area_ha_scsr = as.numeric(st_area(geometry) / 10000))
 ```
 
 
 
-```{r}
-# Total area of SCSR MPA
-total_ha_scsr_mpas <- sum(scsr_boundary$area_ha_scsr, na.rm = TRUE)
 
-print(paste0("The total hectarage of SCSR MPAs in Ha: ", round(total_ha_scsr_mpas, 2)))
+```{r}
+# Total area of all SCSR  region
+total_ha_scsr_mpas <- sum(scsr_mpas$area_ha_scsr, na.rm = TRUE)
+
+print(paste0("The total hectarage of all the SCSR MPAs: ", round(total_ha_scsr_mpas, 2)))
 
 # Summarize total area by zone and calculate percentage
 zone_areas_scsr_absolute <- scsr_substrate_simple |> 
