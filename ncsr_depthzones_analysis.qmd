@@ -35,9 +35,40 @@ ncsr_biota_fullregion <- readRDS(file.path(rds.dir, "ncsr_biota_fullregion.rds")
 ```
 
 ```{r}
+colnames(ncsr_biota)
+```
+
+
+```{r}
+# Modify to make these more manageable, recalcualte hectares, and drop unclassified 
+ncsr_substrate <- ncsr_substrate |> 
+  select(c(pmep_zone_detail, pmep_zone, cmecs_sc_category, cmecs_sc_class, area_ha, geometry, study_regi, shortname, fullname, type, state)) |> 
+  filter(cmecs_sc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(geometry) / 10000))
+
+ncsr_substrate_fullregion <- ncsr_substrate_fullregion |> 
+  select(c(pmep_zone_detail, pmep_zone, cmecs_sc_category, cmecs_sc_class, area_ha, geometry, study_regi, name, type, state)) |> 
+  filter(cmecs_sc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(geometry) / 10000))
+
+ncsr_biota <- ncsr_biota |> 
+  select(c(pmep_zone, cmecs_bc_category, cmecs_bc_name, area_ha, geometry, study_regi, shortname, fullname, type, state)) |> 
+  filter(cmecs_bc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(geometry) / 10000))
+
+ncsr_biota_fullregion <- ncsr_biota_fullregion |> 
+  select(c(pmep_zone, cmecs_bc_category, cmecs_bc_name, area_ha, geometry, study_regi, name, type, state)) |>  
+  filter(cmecs_bc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(geometry) / 10000))
+
+```
+
+
+
+```{r}
 # Make a simple dataframe
 ncsr_substrate_simple <- ncsr_substrate |> 
-  st_drop_geometry()
+  st_drop_geometry() 
 
 ncsr_substrate_fullregion_simple <- ncsr_substrate_fullregion |> 
   st_drop_geometry()
@@ -86,11 +117,7 @@ ncsr_substrate_fullregion_simple <- ncsr_substrate_fullregion_simple |>
 
 unique(ncsr_substrate_fullregion_simple$pmep_zone_detail)
 ```
-
-```{r}
-head()
-```
-
+## This section will calculate the numbers needed for the depth zones relative abundance stacked bar chart:
 
 ```{r}
 # Total area across NCSR MPAs
@@ -143,6 +170,120 @@ zone_areas_ncsr_fullregion |>
   cat(sep = "\n")
 
 ```
+
+## Now, lets do the same thing for Substrate, to generate substrate relative abundance chart: 
+
+```{r}
+# Total area across NCSR MPAs
+total_ha_ncsr_mpas <- sum(ncsr_substrate_simple$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Substrate data within NCSR MPAs in Ha: ", round(total_ha_ncsr_mpas, 2)))
+
+# Summarize total area by zone and calculate percentage
+cat_areas_ncsr <- ncsr_substrate_simple |> 
+  group_by(cmecs_sc_category) |> 
+  summarize(total_area_per_cat_ncsr = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_ncsr = (total_area_per_cat_ncsr / total_ha_ncsr_mpas) * 100)
+
+# Print formatted output
+cat_areas_ncsr |> 
+  arrange(cmecs_sc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_category, 
+    ": ", round(total_area_per_cat_ncsr, 2), " ha (", 
+    round(percent_of_total_ncsr, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+```
+
+```{r}
+# Total area across NCSR statewaters 
+total_ha_ncsr_statewaters <- sum(ncsr_substrate_fullregion_simple$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Substrate data within NCSR Statewaters in Ha: ", round(total_ha_ncsr_statewaters, 2)))
+
+# Summarize total area by zone and calculate percentage
+cat_areas_ncsr_full <- ncsr_substrate_fullregion_simple |> 
+  group_by(cmecs_sc_category) |> 
+  summarize(total_area_per_cat_ncsr_full = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_ncsr_full = (total_area_per_cat_ncsr_full / total_ha_ncsr_statewaters) * 100)
+
+# Print formatted output
+cat_areas_ncsr_full |> 
+  arrange(cmecs_sc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_sc_category, 
+    ": ", round(total_area_per_cat_ncsr_full, 2), " ha (", 
+    round(percent_of_total_ncsr_full, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+```
+## For biota relative abundance
+
+```{r}
+# Total area across NCSR MPAs for biota
+total_ha_ncsr_mpas_bio <- sum(ncsr_biota_simple$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Biota data within NCSR MPAs in Ha: ", round(total_ha_ncsr_mpas_bio, 2)))
+
+# Summarize total area by cat and calculate percentage
+cat_areas_ncsr_bio <- ncsr_biota_simple |> 
+  group_by(cmecs_bc_category) |> 
+  summarize(total_area_per_cat_ncsr_bio = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_ncsr_bio = (total_area_per_cat_ncsr_bio / total_ha_ncsr_mpas_bio) * 100)
+
+# Print formatted output
+cat_areas_ncsr_bio |> 
+  arrange(cmecs_bc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_bc_category, 
+    ": ", round(total_area_per_cat_ncsr_bio, 2), " ha (", 
+    round(percent_of_total_ncsr_bio, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+```
+
+```{r}
+# Total area across NCSR statewaters for biota
+total_ha_ncsr_full_bio <- sum(ncsr_biota_fullregion_simple$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Biota data within NCSR Statewaters in Ha: ", round(total_ha_ncsr_full_bio, 2)))
+
+# Summarize total area by cat and calculate percentage
+cat_areas_ncsr_bio_full <- ncsr_biota_fullregion_simple |> 
+  group_by(cmecs_bc_category) |> 
+  summarize(total_area_per_cat_ncsr_bio_full = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_ncsr_bio_full = (total_area_per_cat_ncsr_bio_full / total_ha_ncsr_full_bio) * 100)
+
+# Print formatted output
+cat_areas_ncsr_bio_full |> 
+  arrange(cmecs_bc_category) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    cmecs_bc_category, 
+    ": ", round(total_area_per_cat_ncsr_bio_full, 2), " ha (", 
+    round(percent_of_total_ncsr_bio_full, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+```
+
+
+
+
+
+
+
 
 
 **NOTE: the fact that the "federal waters" zones have anything at all in them is strange, considering that we have already filtered to MPAs, which I assume are all state waters? But maybe not? Bears clarifying.**
