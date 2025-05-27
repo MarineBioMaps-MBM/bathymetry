@@ -283,11 +283,243 @@ cat_areas_scsr_bio_full |>
 
 ```
 
+## Making plots for the Final Presentation
+
+```{r}
+# Zoom in on Reyes
+campus_sub <- scsr_substrate |> 
+  filter(shortname == "Campus Point")
+
+campus_sub <- campus_sub |> 
+  sf::st_transform('+proj=latlong +datum=WGS84')
+
+campus_sub$cmecs_sc_category <- as.character(campus_sub$cmecs_sc_category)
+
+# Define custom color palette
+substrate_categories_campus_sub <- unique(campus_sub$cmecs_sc_category)
+substrate_palette <- c("#204035FF", "#4A7169FF", "#849383", "#BEB59CFF", "#998467", "#735231FF", "#49271BFF")
+pal <- colorFactor(palette = substrate_palette, domain = substrate_categories_campus_sub)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -123.04444, lat = 38.83528, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = campus_sub,
+              color = ~pal(cmecs_sc_category), # Assign colors based on type
+              weight = 3,
+              fillOpacity = 1,
+              popup = paste0("Substrate type:  ", campus_sub$cmecs_sc_category, "<br>",
+                              "Substrate type area:  ", campus_sub$area_ha, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = campus_sub$cmecs_sc_category,
+            title = "Substrate Within MPAs")
+
+
+```
+
+```{r}
+# Zoom in on campus point -DEPTH
+campus_sub$cmecs_sc_category <- as.character(campus_sub$pmep_zone_detail)
+
+# Define custom color palette
+depth_categories_campus_sub <- unique(campus_sub$pmep_zone_detail)
+depth_palette <- "Blues"
+pal <- colorFactor(palette = depth_palette, domain = depth_categories_campus_sub)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -123.04444, lat = 38.83528, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = campus_sub,
+              color = ~pal(pmep_zone_detail), # Assign colors based on type
+              weight = 3,
+              fillOpacity = 1,
+              popup = paste0("Depth Zone:  ", campus_sub$pmep_zone_detail, "<br>",
+                              "Depth Zone area:  ", campus_sub$area_ha, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = campus_sub$pmep_zone_detail,
+            title = "Depth Zones Within MPAs")
+
+
+```
+
+```{r}
+
+# campus point BIOTA 
+campus_biota <- scsr_biota |> 
+  filter(shortname =="Campus Point") |> 
+  sf::st_transform('+proj=latlong +datum=WGS84')
+
+
+# Set tmap to interactive mode
+tmap_mode("view")
+
+# Create the map
+tm_shape(campus_biota) +
+  tm_polygons(
+    col = "cmecs_bc_category",
+    palette = c("seagreen", "yellow2", "#D0D3A2", "#798234FF", "#F0C6C3FF", "#DF91A3FF", "#D46780FF" ),
+    title = "Biota within MPAs",
+    # border.col = "grey40",
+    # border.lwd = 0.0005,
+    alpha = 1
+    # popup.vars = c("MPA Name" = "name", 
+    #               "Biota type" = "cmecs_bc_category", 
+    #               "Area (ha)" = "area_ha")
+  ) +
+  tm_view(
+    set.view = c(-123.04444, 38.83528, 8)
+  ) +
+  tm_basemap("CartoDB.Positron") +
+    tm_minimap(
+    position = "bottom-right",
+    toggleDisplay = TRUE,
+    minimized = FALSE,
+    width = 150,
+    height = 150
+  ) +
+  tm_layout(
+    legend.outside = TRUE,
+    legend.outside.position = "right"
+  )
+```
+
+
+```{r}
+# Read in MPA boundaries data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+# Clean and transform MPA boundaries data
+mpas <- mpa_boundaries |> 
+  clean_names() |> 
+  sf::st_transform('+proj=latlong +datum=WGS84') |> 
+  st_make_valid() |> 
+  rename(hectares_mpa = hectares)
+
+# Filter to campus point
+campus_mpa <- mpas |> 
+  filter(shortname == "Campus Point")
+
+# Make a map
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989,
+          lat = 34.4203,
+          zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = campus_mpa,
+              color = "seagreen", # Assign colors based on type
+              weight = 3,
+              fillOpacity = .25,
+              label = ~fullname)
+
+
+
+
+```
+
+
+## Make a map of all of the substrate data for scsr: with precision reduced
+
+```{r}
+# SCSR_fullregion
+
+# Reduce resolution
+scsr_substrate_fullregion_red <- st_simplify(scsr_substrate_fullregion, preserveTopology = TRUE, dTolerance = 30) |> 
+  sf::st_transform('+proj=latlong +datum=WGS84')
+
+
+scsr_substrate_fullregion_red$cmecs_sc_category <- as.character(scsr_substrate_fullregion_red$cmecs_sc_category)
+
+# Define custom color palette
+substrate_categories_scsr_fullregion_red <- unique(scsr_substrate_fullregion_red$cmecs_sc_category)
+substrate_palette <- c("#204035FF", "#4A7169FF", "#849383", "#BEB59CFF", "#998467", "#735231FF", "#49271BFF")
+pal <- colorFactor(palette = substrate_palette, domain = substrate_categories_scsr_fullregion_red)
+
+# Map with color-coded polygons
+leaflet() |> 
+  addProviderTiles(providers$CartoDB.Positron) |> 
+  setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
+  addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
+  addPolygons(data = scsr_substrate_fullregion_red,
+              color = ~pal(cmecs_sc_category), # Assign colors based on type
+              weight = 3,
+              fillOpacity = 1,
+              popup = paste0("Substrate type:  ", scsr_substrate_fullregion_red$cmecs_sc_category, "<br>",
+                              "Substrate type area:  ", scsr_substrate_fullregion_red$area_ha, "<br>")) |> 
+  addLegend(position = "topright",
+            pal = pal,
+            values = scsr_substrate_fullregion_red$cmecs_sc_category,
+            title = "Substrate Within MPAs")
+```
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+## Calculate Depth Zones Absolute Abundance percentages for tables
+
+```{r}
+# Read in statewater/study regions boundaries data
+sr_boundary.dir <- "/capstone/marinebiomaps/data/MLPA_Study_Regions"
+scsr_boundary <- sf::st_read(file.path(sr_boundary.dir, "Marine_Life_Protection_Act_Study_Regions_-_R7_-_CDFW_[ds3178].shp")) |> 
+  clean_names() |> 
+  st_transform(st_crs(scsr_substrate)) |> 
+  st_make_valid() |> 
+  filter(study_regi == "SCSR")
+```
+
+```{r}
+colnames(scsr_boundary)
+```
+
+```{r}
+# Add this to pipe once i verify col names 
+#mutate(area_ha_scsr = as.numeric(st_area(geometry) / 10000))
+```
+
+
+
+```{r}
+# Total area of SCSR MPA
+total_ha_scsr_mpas <- sum(scsr_boundary$area_ha_scsr, na.rm = TRUE)
+
+print(paste0("The total hectarage of SCSR MPAs in Ha: ", round(total_ha_scsr_mpas, 2)))
+
+# Summarize total area by zone and calculate percentage
+zone_areas_scsr_absolute <- scsr_substrate_simple |> 
+  group_by(pmep_zone_detail) |> 
+  summarize(total_area_per_zone_scsr_absolute = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_scsr_absolute = (total_area_per_zone_scsr_absolute / total_ha_scsr_mpas) * 100)
+
+# Print formatted output
+zone_areas_scsr_absolute |> 
+  arrange(pmep_zone_detail) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    pmep_zone_detail, 
+    ": ", round(total_area_per_zone_scsr_absolute, 2), " ha (", 
+    round(percent_of_total_scsr_absolute, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+```
 
 
 

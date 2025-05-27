@@ -30,21 +30,69 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, l
 ```{r}
 # Read in substrate and biotic data
 rds.dir <- "/capstone/marinebiomaps/data/rds-files"
+all_substrate <- readRDS(file.path(rds.dir, "sub_in_statewater.rds"))
 substrate_in_mpas <- readRDS(file.path(rds.dir, "substrate_in_mpas.rds"))
+all_biota <- readRDS(file.path(rds.dir, "biota.rds"))
 biota_in_mpas <- readRDS(file.path(rds.dir, "biota_in_mpas.rds"))
-all_substrate <- readRDS(file.path(rds.dir, "substrate.rds"))
-#substrate_outside_mpas <- readRDS(file.path(rds.dir, "substrate_outside_mpas.rds"))
 
 ```
 
-## In the substrate.rds and biota.rds files, we already have the area of each polygon calculated and stored in a column. So, for much of the statewide analysis, it is ok to use the data with the geometry column dropped!
+```{r}
+colnames(all_substrate)
+
+```
+
+
+## I will need to crop the substrate data to be within state water boundaries
+
+```{r}
+# Check with Michelle first to see if she already did this...will take forever!! Answer is yes, sub_in_statewaters.rds
+#all_substrate <- st_intersection(sr_boundaries, all_substrate)
+```
+
+## With the data now cropped, I will drop columns I'm not interested in, and recalculate area_ha just in case
+
+```{r}
+# Modify to make these more manageable, recalcualte hectares, and drop unclassified 
+all_substrate <- all_substrate |> 
+  clean_names() |> 
+  select(c(pmep_zone_detail, pmep_zone, cmecs_sc_category, cmecs_sc_class, area_ha, Shape, study_regi, type, state)) |> 
+  filter(cmecs_sc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(Shape) / 10000))
+
+substrate_in_mpas <- substrate_in_mpas |> 
+  select(c(pmep_zone_detail, pmep_zone, cmecs_sc_category, cmecs_sc_class, area_ha, geometry, study_regi, name, type, state)) |> 
+  filter(cmecs_sc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(geometry) / 10000))
+
+all_biota <- all_biota |> 
+  select(c(pmep_zone, cmecs_bc_category, cmecs_bc_name, area_ha, Shape, state)) |> 
+  filter(cmecs_bc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(Shape) / 10000))
+
+biota_in_mpas <- biota_in_mpas |> 
+  select(c(pmep_zone, cmecs_bc_category, cmecs_bc_name, area_ha, geometry, study_regi, name, type, state)) |>  
+  filter(cmecs_bc_category != "Unclassified") |> 
+  mutate(area_ha = as.numeric(st_area(geometry) / 10000))
+```
+
+
+
+
+## Now that the data is cropped and recalculated, I can drop the geometry column comfortably!
 
 ```{r}
 # Drop the geometry of the substrate column. 
+all_substrate_simple <- all_substrate |> 
+  st_drop_geometry()
+
 substrate_in_mpas_simple <- substrate_in_mpas |> 
   st_drop_geometry() 
 
-all_substrate_simple <- all_substrate |> 
+all_biota_simple <- all_biota |> 
+  st_drop_geometry()
+
+biota_in_mpas_simple <- biota_in_mpas |> 
   st_drop_geometry()
 
 ```
@@ -91,7 +139,7 @@ unique(all_substrate_simple$pmep_zone_detail)
 ```
 
 
-#### I am going to calculate the percentages of each MPA that are in each depth zone - using the area column
+## Calculating the RELATIVE ABUNDANCE of depth zones within MPAs...
 
 ```{r}
 # Total area across all MPAs
@@ -118,7 +166,7 @@ zone_areas |>
   cat(sep = "\n")
 
 ```
-*Note: The total area calculated is higher than the sum of the total added together zone areas, which total 34,766,903.27. This is a 369,000 hectare difference. I will try to figure out why, but am at the moment assuming that there are N/A values, or polygons that are not marked as being part of any zone.*
+
 
 
 ```{r}
@@ -148,6 +196,63 @@ zone_areas |>
 
 
 ```
+
+## Now, lets do Depth Zone calculations for ABSOLUTE abundance. NOTE::: These are only the depth zones that overlap with Substrate and Biota! This is because these are the depth zones of interest when considering complete habitats
+
+
+
+## Read in MPAs data...since the absolute abundance data tables are for components WITHIN MPAS
+```{r}
+# Read in MPA boundaries data
+boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
+mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
+
+# Clean and transform MPA boundaries data
+all_mpas <- mpa_boundaries |> 
+  clean_names() |> 
+  st_transform(st_crs(substrate_in_mpas)) |> 
+  st_make_valid() |> 
+  rename(hectares_mpa = hectares) |> 
+  mutate(area_ha_allmpas = as.numeric(st_area(geometry) / 10000))
+
+```
+
+
+```{r}
+# Total area of all MPAS
+total_ha_all_mpas <- sum(all_mpas$area_ha_allmpas, na.rm = TRUE)
+
+print(paste0("The total hectarage of all MPAs Statewide in Ha: ", round(total_ha_all_mpas, 2)))
+
+# Summarize total area by zone and calculate percentage
+zone_areas_all_absolute <- substrate_in_mpas_simple |> 
+  group_by(pmep_zone_detail) |> 
+  summarize(total_area_per_zone_all_absolute = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total_all_absolute = (total_area_per_zone_all_absolute / total_ha_all_mpas) * 100)
+
+# Print formatted output
+zone_areas_all_absolute |> 
+  arrange(pmep_zone_detail) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    pmep_zone_detail, 
+    ": ", round(total_area_per_zone_all_absolute, 2), " ha (", 
+    round(percent_of_total_all_absolute, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
