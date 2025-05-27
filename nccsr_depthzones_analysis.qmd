@@ -172,7 +172,7 @@ zone_areas_nccsr_mpas |>
 
 ```{r}
 # Total area across NCCSR MPAs
-total_ha_ncsr_mpas <- sum(nccsr_substrate_simple$area_ha, na.rm = TRUE)
+total_ha_nccsr_mpas <- sum(nccsr_substrate_simple$area_ha, na.rm = TRUE)
 
 print(paste0("The total area of Substrate data within NCCSR MPAs in Ha: ", round(total_ha_nccsr_mpas, 2)))
 

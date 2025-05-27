@@ -32,17 +32,8 @@ librarian::shelf(tidyverse, janitor, sf, terra, tmap, knitr, showtext, ggtext, l
 rds.dir <- "/capstone/marinebiomaps/data/rds-files"
 substrate_in_mpas <- readRDS(file.path(rds.dir, "substrate_in_mpas.rds"))
 biota_in_mpas <- readRDS(file.path(rds.dir, "biota_in_mpas.rds"))
+all_substrate <- readRDS(file.path(rds.dir, "substrate.rds"))
 #substrate_outside_mpas <- readRDS(file.path(rds.dir, "substrate_outside_mpas.rds"))
-
-# Read in MPA boundaries data
-boundary.dir <- "/capstone/marinebiomaps/data/MPA_boundaries"
-mpa_boundaries <- sf::st_read(file.path(boundary.dir, "California_Marine_Protected_Areas_[ds582].shp"))
-
-# Clean and transform MPA boundaries data
-mpas <- mpa_boundaries |> 
-  clean_names() |> 
-  st_transform(mpas, crs = st_crs(substrate_in_mpas)) |> 
-  st_make_valid()
 
 ```
 
@@ -52,6 +43,10 @@ mpas <- mpa_boundaries |>
 # Drop the geometry of the substrate column. 
 substrate_in_mpas_simple <- substrate_in_mpas |> 
   st_drop_geometry() 
+
+all_substrate_simple <- all_substrate |> 
+  st_drop_geometry()
+
 ```
 
 
@@ -59,6 +54,7 @@ substrate_in_mpas_simple <- substrate_in_mpas |>
 # Take a look at all the PMEP depth zones to verify
 unique(substrate_in_mpas_simple$pmep_zone_detail)
 ```
+
 ```{r}
 # Rename depth zone variables for searchability/ease - I will bring back more technical names for viz
 substrate_in_mpas_simple <- substrate_in_mpas_simple |> 
@@ -75,6 +71,23 @@ substrate_in_mpas_simple <- substrate_in_mpas_simple |>
 
 
 unique(substrate_in_mpas_simple$pmep_zone_detail)
+```
+```{r}
+# Rename depth zone variables for searchability/ease - I will bring back more technical names for viz
+all_substrate_simple <- all_substrate_simple |> 
+  mutate(pmep_zone_detail = case_when(
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), State Waters"  ~ "Zone 6",
+    pmep_zone_detail == "Outside PMEP Scope (>-200m) or International Waters" ~ "Zone 8",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), Federal"               ~ "Zone 5",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), State Waters"         ~ "Zone 2",
+    pmep_zone_detail == "Landward Zone"                                       ~ "Zone 0",
+    pmep_zone_detail == "Seaward Zone (-30m to -100m), State Waters"          ~ "Zone 4",
+    pmep_zone_detail == "Deep Shelf or Sound (-100m to -200m), Federal"       ~ "Zone 7",
+    pmep_zone_detail == "Core Zone (Shoreline to -30m), Federal"              ~ "Zone 3"
+  ))
+
+
+unique(all_substrate_simple$pmep_zone_detail)
 ```
 
 
@@ -106,6 +119,38 @@ zone_areas |>
 
 ```
 *Note: The total area calculated is higher than the sum of the total added together zone areas, which total 34,766,903.27. This is a 369,000 hectare difference. I will try to figure out why, but am at the moment assuming that there are N/A values, or polygons that are not marked as being part of any zone.*
+
+
+```{r}
+# Gonna do the same thing now, for statewide, not within mpas 
+
+total_ha_all_mpas <- sum(all_substrate_simple$area_ha, na.rm = TRUE)
+
+print(paste0("The total area of Substrate data within California Statewaters in Ha: ", round(total_ha_all_mpas, 2)))
+
+# Summarize total area by zone and calculate percentage
+zone_areas <- all_substrate_simple |> 
+  group_by(pmep_zone_detail) |> 
+  summarize(total_area_per_zone = sum(area_ha, na.rm = TRUE), .groups = "drop") |> 
+  mutate(percent_of_total = (total_area_per_zone / total_ha_all_mpas) * 100)
+
+# Print formatted output
+zone_areas |> 
+  arrange(pmep_zone_detail) |> 
+  rowwise() |> 
+  mutate(print_statement = paste0(
+    pmep_zone_detail, 
+    ": ", round(total_area_per_zone, 2), " ha (", 
+    round(percent_of_total, 2), "% of total)"
+  )) |> 
+  pull(print_statement) |> 
+  cat(sep = "\n")
+
+
+```
+
+
+
 
 
 ```{r}
@@ -149,7 +194,7 @@ ggplot(zone_areas_filtered, aes(x = percent_of_total, y = pmep_zone_detail, fill
              color = "black",
              hjust = 0,    # Align to left
              x = 1,        # Set near y-axis (adjust as needed)
-             size = 3.5) +
+             size = 8) +
   scale_fill_brewer(palette = "Blues") +
   scale_y_discrete(labels = function(x) str_wrap(x, width = 20))
 
@@ -263,6 +308,7 @@ zone2_with_sub |>
   pull(print_statement) |> 
   cat(sep = "\n")
 ```
+
 ```{r}
 # Plot Zone 2!!
 ggplot(zone2_with_sub, aes(x = percent_of_total2, y = cmecs_sc_category, fill = cmecs_sc_category)) +
@@ -311,6 +357,7 @@ zone4_with_sub |>
   pull(print_statement) |> 
   cat(sep = "\n")
 ```
+
 ```{r}
 # Plot Zone 4
 ggplot(zone4_with_sub, aes(x = percent_of_total4, y = cmecs_sc_category, fill = cmecs_sc_category)) +
@@ -447,9 +494,11 @@ biota_in_mpas_simple <- biota_in_mpas |>
 ```{r}
 unique(zone2_df$cmecs_sc_category)
 ```
+
 ```{r}
 unique(zone2_df$pmep_zone_detail)
 ```
+
 ```{r}
 unique(substrate_in_mpas$pmep_zone_detail)
 ```
@@ -601,18 +650,6 @@ sr_boundaries <- sf::st_read(file.path(sr_boundary.dir, "Marine_Life_Protection_
 
 ```
 
-```{r}
-colnames(sr_boundaries)
-```
-
-```{r}
-unique(sr_boundaries$study_regi)
-```
-
-```{r}
-# Join mpas with sr_boundaries datasets, so that there is no sr_boundaries data where the mpa data is, so that when you click on an mpa in the interactive map, it shows the mpa name instead of the region name. 
-```
-
 
 ```{r}
 # Transform CRS for this map, since leaflet requires WGS84
@@ -641,7 +678,7 @@ leaflet() |>
             values = sr_boundaries$study_regi,
             title = "MLPA Study Region")
 ```
-
+## This map will work as the interactive map landing map
 
 ```{r}
 # Transform CRS for this map, since leaflet requires WGS84
@@ -660,17 +697,17 @@ leaflet() |>
   addProviderTiles(providers$CartoDB.Positron) |> 
   setView(lng = -119.6989, lat = 34.4203, zoom = 8) |> 
   addMiniMap(toggleDisplay = TRUE, minimized = FALSE) |> 
-  addPolygons(data = mpas,
-              color = "goldenrod", # Assign colors based on study_region
-              weight = 3,
-              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
-                             "MPA Type:  ", mpas$type, "<br>",
-                             "Study Region:  ", mpas$study_regi)) |> 
   addPolygons(data = sr_boundaries,
               color = ~pal(study_regi), # Assign colors based on study_region
               weight = 3,
               popup = paste0("Study Region Name:  ", sr_boundaries$name, "<br>",
                              "Study Region Abbreviation:  ", sr_boundaries$study_regi, "<br>")) |> 
+   addPolygons(data = mpas,
+              color = "goldenrod", # Assign colors based on study_region
+              weight = 3,
+              popup = paste0("MPA Name:  ", mpas$shortname, "<br>",
+                             "MPA Type:  ", mpas$type, "<br>",
+                             "Study Region:  ", mpas$study_regi)) |>  
   addLegend(position = "topright",
             pal = pal,
             values = mpas$study_regi,
@@ -758,6 +795,12 @@ leaflet() |>
 
 
 
+```{r}
+colnames(mpas)
+```
+```{r}
+unique(mpas$study_regi)
+```
 
 
 
